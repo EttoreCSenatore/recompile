@@ -3,6 +3,7 @@ import { angleDiff, castRay, clearPath } from '../los';
 import { POUNCE } from '../versions';
 import { center, dist, type Guard, type InteractTarget, type World } from '../world';
 import { damageGuard, stunGuard } from './guards';
+import { openCache } from './loadout';
 import { startCompile } from './siege';
 
 // ── Attack and abilities ────────────────────────────────────────────────
@@ -16,7 +17,9 @@ export function updateAbilityAndAttack(w: World, _dt: number, input: { attack: b
 function attack(w: World): void {
   const p = w.player;
   const a = p.version.attack!;
-  p.attackCooldown = a.cooldown;
+  const mods = p.build.mods;
+  p.attackCooldown = a.cooldown * (1 - mods.cooldown);
+  if (mods.attackCost > 0) p.power -= mods.attackCost;
   w.emit({ type: 'slash', x: p.x, y: p.y, facing: p.facing, range: a.range });
   w.emitNoise(p.x, p.y, a.noiseRadius);
   for (const g of w.guards) {
@@ -25,7 +28,7 @@ function attack(w: World): void {
     if (d > a.range + CFG.guard.radius) continue;
     if (d > 0.5 && Math.abs(angleDiff(p.facing, Math.atan2(g.y - p.y, g.x - p.x))) > a.arc / 2) continue;
     if (!clearPath(w.grid, p.x, p.y, g.x, g.y)) continue;
-    damageGuard(w, g, a.damage);
+    damageGuard(w, g, a.damage + mods.damage);
   }
 }
 
@@ -66,11 +69,13 @@ function staticShock(w: World): void {
     return;
   }
   p.power -= ab.cost;
-  p.abilityCooldown = ab.cooldown;
-  stunGuard(best, CFG.stun.duration);
+  p.abilityCooldown = ab.cooldown * (1 - p.build.mods.cooldown);
+  const stun = CFG.stun.duration * (1 + p.build.mods.stun);
+  stunGuard(best, stun);
+  empBurst(w, best.x, best.y);
   w.stats.stuns++;
   w.emit({ type: 'stun', x: best.x, y: best.y });
-  w.log(`> static_shock -> ${best.name}: STUNNED (${CFG.stun.duration}s)`, 'good');
+  w.log(`> static_shock -> ${best.name}: STUNNED (${stun.toFixed(1)}s)`, 'good');
   w.emitNoise(best.x, best.y, CFG.stun.noiseRadius, best);
 }
 
@@ -84,7 +89,7 @@ function startPounce(w: World): void {
   const reach = Math.min(POUNCE.distance, castRay(w.grid, p.x, p.y, p.facing, POUNCE.distance) - p.version.radius - 0.05);
   if (reach < 0.6) return;
   p.power -= ab.cost;
-  p.abilityCooldown = ab.cooldown;
+  p.abilityCooldown = ab.cooldown * (1 - p.build.mods.cooldown);
   p.pounce = { dx: Math.cos(p.facing) * reach, dy: Math.sin(p.facing) * reach, t: 0 };
 }
 
@@ -95,9 +100,24 @@ export function landPounce(w: World): void {
   w.emitNoise(p.x, p.y, POUNCE.noiseRadius);
   for (const g of w.guards) {
     if (g.state === 'down' || dist(p, g) > POUNCE.hitRadius + CFG.guard.radius) continue;
-    damageGuard(w, g, POUNCE.damage);
-    if (g.hp > 0) stunGuard(g, POUNCE.stun);
+    damageGuard(w, g, POUNCE.damage + p.build.mods.damage);
+    if (g.hp > 0) stunGuard(g, POUNCE.stun * (1 + p.build.mods.stun));
   }
+  empBurst(w, p.x, p.y);
+}
+
+/** EMP set bonus: stuns also knock out nearby cameras for a while. */
+function empBurst(w: World, x: number, y: number): void {
+  if (!w.player.build.tags.has('EMP')) return;
+  let hit = 0;
+  for (const cam of w.cameras) {
+    if (cam.disabled || Math.hypot(cam.x - x, cam.y - y) > CFG.modules.empRange) continue;
+    cam.emp = CFG.modules.empTime;
+    cam.seesPlayer = false;
+    cam.suspicion = 0;
+    hit++;
+  }
+  if (hit > 0) w.log(`> EMP: ${hit} camera(s) knocked out for ${CFG.modules.empTime}s.`, 'good');
 }
 
 // ── Interaction: hack, scavenge, compile ────────────────────────────────
@@ -122,8 +142,9 @@ export function updateInteract(w: World, dt: number, holding: boolean): void {
   }
   const kind = targetKind(w, target);
   if (!p.interact) {
-    p.interact = { target, progress: 0, duration: CFG.interact.duration[kind], noiseTimer: 0 };
-    if (kind !== 'fabricator') w.log(`> ${kind === 'scrap' ? 'scavenging' : 'hacking'} ${label(w, target)}...`, 'info');
+    const speed = kind === 'fabricator' ? 1 : 1 + p.build.mods.hackSpeed;
+    p.interact = { target, progress: 0, duration: CFG.interact.duration[kind] / speed, noiseTimer: 0 };
+    if (kind !== 'fabricator') w.log(`> ${kind === 'scrap' || kind === 'cache' ? 'scavenging' : 'hacking'} ${label(w, target)}...`, 'info');
   }
   p.interact.progress += dt;
   p.interact.noiseTimer += dt;
@@ -143,7 +164,7 @@ export function interactionHint(w: World): string | null {
   const p = w.player;
   if (p.interact && targetKind(w, p.interact.target) !== 'fabricator') {
     const pct = Math.floor((p.interact.progress / p.interact.duration) * 100);
-    return `${targetKind(w, p.interact.target) === 'scrap' ? 'SCAVENGING' : 'HACKING'} ${label(w, p.interact.target)} ${pct}%`;
+    return `${['scrap', 'cache'].includes(targetKind(w, p.interact.target)) ? 'SCAVENGING' : 'HACKING'} ${label(w, p.interact.target)} ${pct}%`;
   }
   const t = findTarget(w);
   if (!t) return null;
@@ -157,7 +178,7 @@ export function interactionHint(w: World): string | null {
     }
     return `[F] hold to COMPILE ${next.id} (−${next.data} ◇ −${next.scrap} ▣)`;
   }
-  return `[F] hold to ${t.kind === 'scrap' ? 'scavenge' : 'hack'} ${label(w, t)}`;
+  return `[F] hold to ${t.kind === 'scrap' ? 'scavenge' : t.kind === 'cache' ? 'crack open' : 'hack'} ${label(w, t)}`;
 }
 
 function findTarget(w: World): InteractTarget | null {
@@ -173,6 +194,7 @@ function findTarget(w: World): InteractTarget | null {
   for (const t of w.terminals) if (!t.hacked) consider({ kind: 'terminal', id: t.id }, dist(p, center(t)));
   for (const c of w.cameras) if (!c.disabled) consider({ kind: 'camera', id: c.id }, dist(p, c));
   for (const s of w.scrapPiles) if (!s.taken) consider({ kind: 'scrap', id: s.id }, dist(p, center(s)));
+  for (const c of w.caches) if (!c.opened) consider({ kind: 'cache', id: c.id }, dist(p, center(c)));
   const fab = w.fabricator;
   if (fab && (fab.state === 'locked' || fab.state === 'ready')) consider({ kind: 'fabricator' }, dist(p, center(fab)));
   return best;
@@ -186,6 +208,8 @@ function available(w: World, t: InteractTarget): boolean {
       return !w.cameras[t.id]!.disabled;
     case 'scrap':
       return !w.scrapPiles[t.id]!.taken;
+    case 'cache':
+      return !w.caches[t.id]!.opened;
     case 'fabricator': {
       const next = w.player.version.next;
       return w.fabricator?.state === 'ready' && !!next && w.player.data >= next.data && w.player.scrap >= next.scrap;
@@ -201,6 +225,8 @@ function targetPos(w: World, t: InteractTarget) {
       return w.cameras[t.id]!;
     case 'scrap':
       return center(w.scrapPiles[t.id]!);
+    case 'cache':
+      return center(w.caches[t.id]!);
     case 'fabricator':
       return center(w.fabricator!);
   }
@@ -217,6 +243,8 @@ function label(w: World, t: InteractTarget): string {
       return w.cameras[t.id]!.name;
     case 'scrap':
       return 'SCRAP PILE';
+    case 'cache':
+      return 'SEALED CACHE';
     case 'fabricator':
       return 'FABRICATOR';
     case 'terminal': {
@@ -234,6 +262,10 @@ function complete(w: World, t: InteractTarget): void {
     startCompile(w);
     return;
   }
+  if (t.kind === 'cache') {
+    openCache(w, t.id);
+    return;
+  }
   w.stats.hacks += t.kind === 'scrap' ? 0 : 1;
   if (t.kind === 'scrap') {
     w.scrapPiles[t.id]!.taken = true;
@@ -245,20 +277,42 @@ function complete(w: World, t: InteractTarget): void {
     const cam = w.cameras[t.id]!;
     cam.disabled = true;
     cam.seesPlayer = false;
-    p.data += r.camera;
-    w.log(`> ${cam.name} disabled. +${r.camera} DATA`, 'good');
+    const gain = Math.round(r.camera * (1 + p.build.mods.data));
+    p.data += gain;
+    w.log(`> ${cam.name} disabled. +${gain} DATA`, 'good');
+    spreadVirus(w, cam);
     return;
   }
   const term = w.terminals[t.id]!;
   term.hacked = true;
-  p.data += r[term.kind];
+  const gain = Math.round(r[term.kind] * (1 + p.build.mods.data));
+  p.data += gain;
+  spreadVirus(w, center(term));
   if (term.kind === 'data') {
-    w.log(`> data cache extracted. +${r.data} DATA`, 'good');
+    w.log(`> data cache extracted. +${gain} DATA`, 'good');
   } else if (w.level.securityUnlocks === 'fabricator') {
     if (w.fabricator?.state === 'locked') w.fabricator.state = 'ready';
-    w.log(`> SECURITY OVERRIDE. Fabricator powered. +${r.security} DATA`, 'good');
+    w.log(`> SECURITY OVERRIDE. Fabricator powered. +${gain} DATA`, 'good');
   } else {
     w.grid.exitOpen = true;
-    w.log(`> UPLINK established. Outflow gate unlocked. +${r.security} DATA`, 'good');
+    w.log(`> UPLINK established. Outflow gate unlocked. +${gain} DATA`, 'good');
   }
+}
+
+/** VIRAL set bonus: a finished hack jumps to the nearest live camera. */
+function spreadVirus(w: World, from: { x: number; y: number }): void {
+  if (!w.player.build.tags.has('VIRAL')) return;
+  let best: (typeof w.cameras)[number] | null = null;
+  let bestD: number = CFG.modules.viralRange;
+  for (const cam of w.cameras) {
+    const d = Math.hypot(cam.x - from.x, cam.y - from.y);
+    if (!cam.disabled && d > 0.01 && d <= bestD) {
+      best = cam;
+      bestD = d;
+    }
+  }
+  if (!best) return;
+  best.disabled = true;
+  best.seesPlayer = false;
+  w.log(`> VIRAL: the hack spreads and disables ${best.name}.`, 'good');
 }

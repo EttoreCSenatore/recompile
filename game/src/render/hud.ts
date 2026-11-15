@@ -1,6 +1,8 @@
 import { CFG } from '../sim/config';
 import { interactionHint } from '../sim/systems/actions';
+import { defOf, RARITY_INFO } from '../sim/modules';
 import type { LogLevel, World } from '../sim/world';
+import type { MenuModel } from './menu';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
@@ -41,6 +43,7 @@ export class Hud {
   private readonly prompt = $('prompt');
   private readonly stunCd = $('stun-cd');
   private readonly seed = $('seed');
+  private readonly modules = $('modules');
 
   reset(seed: number): void {
     this.logEl.replaceChildren();
@@ -58,9 +61,10 @@ export class Hud {
 
   update(w: World): void {
     const p = w.player;
-    const pct = Math.max(0, p.power / p.version.maxPower);
+    const maxPower = w.maxPower;
+    const pct = Math.max(0, p.power / maxPower);
     this.powerFill.style.width = `${(pct * 100).toFixed(1)}%`;
-    this.powerText.textContent = `${Math.ceil(p.power)}/${p.version.maxPower}`;
+    this.powerText.textContent = `${Math.ceil(p.power)}/${maxPower}`;
     this.power.classList.toggle('low', pct < 0.3);
     this.power.classList.toggle('charging', p.charging);
     this.data.textContent = String(p.data);
@@ -80,12 +84,67 @@ export class Hud {
       this.siegeHp.style.width = `${((fab.hp / CFG.compile.fabricatorHp) * 100).toFixed(1)}%`;
       this.siegeHpText.textContent = String(Math.ceil(fab.hp));
     }
+    this.updateModules(w);
     this.threatBar.textContent = '▮'.repeat(w.threat) + '▯'.repeat(CFG.threat.max - w.threat);
     this.threat.classList.toggle('high', w.threat >= 4);
     this.objective.textContent = w.objective;
     this.prompt.textContent =
       interactionHint(w) ?? (p.inVent ? 'IN VENT · hidden from sight' : p.inWater ? 'IN WATER · shorting circuits' : '');
     this.stunCd.textContent = p.abilityCooldown > 0 ? `(${p.abilityCooldown.toFixed(1)}s)` : '';
+  }
+
+  private modulesKey = '';
+
+  private updateModules(w: World): void {
+    const p = w.player;
+    const key = `${p.version.id}|${p.version.slots.map((s) => p.equipped[s]?.uid ?? 0).join(',')}|${p.bag.length}|${w.atWorkbench}`;
+    if (key === this.modulesKey) return;
+    this.modulesKey = key;
+    const chips = p.version.slots.map((slot) => {
+      const m = p.equipped[slot];
+      const chip = el('span', m ? defOf(m).name : `${slot} -`, 'chip');
+      if (m) chip.style.color = RARITY_INFO[m.rarity].color;
+      else chip.classList.add('empty');
+      return chip;
+    });
+    const hint = el('span', `[E] ${w.atWorkbench ? 'WORKBENCH' : 'MODULES'} · bag ${p.bag.length}`, 'hint');
+    this.modules.replaceChildren(...chips, hint);
+  }
+
+  /** Renders a loadout or port menu into the overlay. `index` is the highlighted row. */
+  showMenu(model: MenuModel, index: number, onPick: (i: number) => void): void {
+    const s = el('div', undefined, 'screen menu');
+    s.append(el('h1', model.title), el('p', model.sub, 'sub'));
+    const list = el('div', undefined, 'rows');
+    model.rows.forEach((r, i) => {
+      if (r.section) list.append(el('div', r.section, 'section'));
+      const b = el('button', undefined, 'row') as HTMLButtonElement;
+      b.type = 'button';
+      if (i === index) b.classList.add('sel');
+      if (r.disabled) b.classList.add('disabled');
+      const name = el('span', `${r.checked === undefined ? '' : r.checked ? '[x] ' : '[ ] '}${r.label}`, 'name');
+      if (r.color) name.style.color = r.color;
+      b.append(name);
+      if (r.stats?.length) {
+        const st = el('span', undefined, 'stats');
+        for (const x of r.stats) st.append(el('span', x.text, x.bad ? 'bad' : 'good'));
+        b.append(st);
+      }
+      if (r.note) b.append(el('span', r.note, 'note'));
+      b.addEventListener('click', () => onPick(i));
+      list.append(b);
+    });
+    s.append(list);
+    if (model.sets.length) {
+      const box = el('div', undefined, 'sets');
+      for (const t of model.sets) {
+        box.append(el('div', `${t.tag} ${t.count}/3 ${t.active ? `ACTIVE: ${t.bonus}` : `(${t.bonus})`}`, t.active ? 'on' : 'off'));
+      }
+      s.append(box);
+    }
+    s.append(el('p', model.footer, 'small'));
+    this.overlay.replaceChildren(s);
+    list.querySelector('.sel')?.scrollIntoView({ block: 'nearest' });
   }
 
   hideOverlay(): void {
@@ -96,7 +155,7 @@ export class Hud {
     const s = el('div', undefined, 'screen');
     s.append(
       el('h1', 'RECOMPILE'),
-      el('p', 'M2.1 prototype · Act 0: Halvorsen Lab → Act 1: Undercity', 'sub'),
+      el('p', 'M2.2 prototype · Act 0: Halvorsen Lab → Act 1: Undercity', 'sub'),
       el(
         'pre',
         [
@@ -133,7 +192,7 @@ export class Hud {
       el(
         'p',
         won
-          ? 'ECHO-7 escapes the Undercity. End of the M2.1 prototype: modules and the Workbench come next.'
+          ? 'ECHO-7 escapes the Undercity. End of the M2.2 prototype: modules and the Workbench come next.'
           : 'Power reached 0%. The deletion order completes.',
         'sub',
       ),
@@ -143,6 +202,7 @@ export class Hud {
       ['Time', `${Math.floor(w.time / 60)}:${String(Math.floor(w.time % 60)).padStart(2, '0')}`],
       ['Reached', `${w.level.name} as ${w.player.version.id} ${w.player.version.codename}`],
       ['Data / Scrap held', `${w.player.data} / ${w.player.scrap}`],
+      ['Modules installed', String(Object.keys(w.player.equipped).length)],
       ['Humans neutralised', String(w.stats.kills)],
       ['Times detected', String(w.stats.detections)],
       ['Camera alarms', String(w.stats.alarms)],
@@ -168,6 +228,7 @@ function controlsTable(): HTMLElement {
     ['F (hold)', 'hack, scavenge scrap, start the COMPILE'],
     ['Q', 'ability: static shock (v0.1) / pounce (v1)'],
     ['Mouse / SPACE', 'aim / attack (v1 SCRAPPER claws)'],
+    ['E', 'modules: Workbench or field loadout (Gamepad Y)'],
     ['ESC', 'pause'],
     ['Gamepad', 'sticks move/aim · RT attack · X ability · RB hack · L3 sneak · Start'],
     ['Vents', 'guards cannot enter or see inside (v0.1 only)'],

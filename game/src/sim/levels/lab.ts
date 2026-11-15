@@ -92,6 +92,11 @@ export function buildLab(): LevelData {
       { route: [{ x: 14, y: 14 }, { x: 29, y: 14 }, { x: 29, y: 23 }, { x: 19, y: 23 }] },
       { route: [{ x: 35, y: 16 }], facing: DOWN },
     ],
+    caches: [
+      { x: 10, y: 24 },
+      { x: 38, y: 2 },
+    ],
+    workbench: { x: 33, y: 15 },
     fabricator: {
       x: 35,
       y: 21,

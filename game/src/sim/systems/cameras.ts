@@ -8,6 +8,10 @@ export function updateCameras(w: World, dt: number): void {
   const p = w.player;
   for (const cam of w.cameras) {
     if (cam.disabled) continue;
+    if (cam.emp > 0) {
+      cam.seesPlayer = false;
+      continue;
+    }
     cam.facing = cam.baseFacing + Math.sin(w.time * cam.speed + cam.phase) * cam.sweep;
     if (cam.cooldown > 0) {
       cam.cooldown -= dt;

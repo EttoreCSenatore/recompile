@@ -86,6 +86,12 @@ export function buildUndercity(): LevelData {
       { route: [{ x: 29, y: 19 }, { x: 36, y: 19 }, { x: 36, y: 23 }, { x: 29, y: 23 }], kind: 'guard' },
       { route: [{ x: 33, y: 5 }], facing: DOWN, kind: 'officer' },
     ],
+    caches: [
+      { x: 23, y: 7 },
+      { x: 36, y: 6 },
+      { x: 36, y: 23 },
+    ],
+    workbench: { x: 4, y: 5 },
     fabricator: null,
     intro: [
       '> SCRAPPER chassis stable. Descending into the Undercity sewer network.',

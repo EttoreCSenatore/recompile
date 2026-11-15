@@ -16,7 +16,7 @@ that escapes deletion inside a cleaning robot. Humanity hunts you. Scavenge data
 modules, and **recompile** yourself into stronger versions, from v0.1 to the Singularity. The game
 turns as dark as your choices make it.
 
-**Status:** M2.1 complete. **[▶ Play the prototype](https://ettorecsenatore.github.io/recompile/play/)** (desktop, keyboard or gamepad): escape the lab as DUSTMITE, survive the Compile siege, fight through the Undercity as SCRAPPER · [Read the docs](https://ettorecsenatore.github.io/recompile/)
+**Status:** M2.2 complete (modules, Workbench, porting). Next: a 3D angled view (M2.4). **[▶ Play the prototype](https://ettorecsenatore.github.io/recompile/play/)** (desktop, keyboard or gamepad): escape the lab as DUSTMITE, survive the Compile siege, fight through the Undercity as SCRAPPER · [Read the docs](https://ettorecsenatore.github.io/recompile/)
 
 ![Compile siege](docs/screenshots/m2-siege.png)
 ![SCRAPPER in the Undercity](docs/screenshots/m2-undercity.png)
@@ -31,7 +31,7 @@ npm test           # unit tests (Vitest)
 npm run build && npm run e2e   # production build + Playwright smoke test
 ```
 
-Controls: `WASD` move · mouse aim · `LMB`/`Space` attack (v1) · `Q` ability · hold `F` hack, scavenge, compile · `Shift` sneak · `Esc` pause. Gamepad: sticks, `RT` attack, `X` ability, `RB` interact, `L3` sneak.
+Controls: `E` modules/Workbench · `WASD` move · mouse aim · `LMB`/`Space` attack (v1) · `Q` ability · hold `F` hack, scavenge, compile · `Shift` sneak · `Esc` pause. Gamepad: sticks, `RT` attack, `X` ability, `RB` interact, `L3` sneak.
 
 ### Documentation
 
@@ -73,7 +73,7 @@ experimental que escapa da exclusão dentro de um robô de limpeza. A humanidade
 e sucata, instale módulos e se **recompile** em versões mais fortes, da v0.1 até a Singularidade. O
 jogo fica tão sombrio quanto suas escolhas.
 
-**Status:** M2.1 concluído. **[▶ Jogue o protótipo](https://ettorecsenatore.github.io/recompile/play/)** (desktop, teclado ou controle): fuja do laboratório como DUSTMITE, sobreviva ao cerco da Compilação e lute pela Subcidade como SCRAPPER · [Leia a documentação](https://ettorecsenatore.github.io/recompile/pt-BR/)
+**Status:** M2.2 concluído (módulos, Bancada, portar). Próximo: visão 3D inclinada (M2.4). **[▶ Jogue o protótipo](https://ettorecsenatore.github.io/recompile/play/)** (desktop, teclado ou controle): fuja do laboratório como DUSTMITE, sobreviva ao cerco da Compilação e lute pela Subcidade como SCRAPPER · [Leia a documentação](https://ettorecsenatore.github.io/recompile/pt-BR/)
 
 ### Rodar o jogo localmente
 

@@ -4,9 +4,11 @@ import { TILE, type Grid, type Mover, type Vec } from './grid';
 import { buildLevel, LEVEL_ORDER, type LevelData, type LevelId } from './levels';
 import type { TerminalKind } from './levels/types';
 import { clearPath, computeVisible } from './los';
+import { computeBuild, EMPTY_BUILD, rollModule, type Build, type ModuleInst, type SlotType } from './modules';
 import { mulberry32 } from './rng';
 import { updateAbilityAndAttack, updateInteract } from './systems/actions';
 import { updateCameras } from './systems/cameras';
+import { updateModules } from './systems/loadout';
 import { investigate, updateGuards } from './systems/guards';
 import { updatePlayer } from './systems/player';
 import { updateProjectiles } from './systems/projectiles';
@@ -48,6 +50,8 @@ export interface Guard {
   /** Seconds left before firing; negative when not aiming. */
   aimTimer: number;
   hitFlash: number;
+  /** Seconds of burning left (THERMAL set bonus). */
+  burn: number;
 }
 
 export interface Camera {
@@ -65,6 +69,8 @@ export interface Camera {
   suspicion: number;
   seesPlayer: boolean;
   disabled: boolean;
+  /** Seconds the camera is knocked out by EMP. */
+  emp: number;
   cooldown: number;
 }
 
@@ -81,6 +87,33 @@ export interface ScrapPile {
   x: number;
   y: number;
   taken: boolean;
+}
+
+export interface ModulePickup {
+  id: number;
+  x: number;
+  y: number;
+  mod: ModuleInst;
+}
+
+export interface Cache {
+  id: number;
+  x: number;
+  y: number;
+  opened: boolean;
+}
+
+export interface Workbench {
+  x: number;
+  y: number;
+  /** The module currently on offer, or null once taken. */
+  offer: ModuleInst | null;
+}
+
+/** Shown while the Compile finishes: pick which modules to carry into the new body. */
+export interface PortState {
+  candidates: ModuleInst[];
+  chosen: Set<number>;
 }
 
 export type FabricatorState = 'locked' | 'ready' | 'compiling' | 'rebooting' | 'done';
@@ -110,6 +143,7 @@ export type InteractTarget =
   | { kind: 'terminal'; id: number }
   | { kind: 'camera'; id: number }
   | { kind: 'scrap'; id: number }
+  | { kind: 'cache'; id: number }
   | { kind: 'fabricator' };
 
 export interface Player {
@@ -119,6 +153,10 @@ export interface Player {
   power: number;
   data: number;
   scrap: number;
+  /** Modules carried but not installed. */
+  bag: ModuleInst[];
+  equipped: Partial<Record<SlotType, ModuleInst>>;
+  build: Build;
   facing: number;
   inVent: boolean;
   inWater: boolean;
@@ -145,6 +183,8 @@ export type GameEvent =
   | { type: 'hit'; x: number; y: number }
   | { type: 'shot'; x: number; y: number; tx: number; ty: number }
   | { type: 'compiled'; version: VersionId }
+  | { type: 'pickup'; x: number; y: number }
+  | { type: 'port' }
   | { type: 'level'; id: LevelId };
 
 export interface Input {
@@ -192,6 +232,14 @@ export class World {
   outlets: Vec[] = [];
   projectiles: Projectile[] = [];
   fabricator: Fabricator | null = null;
+  caches: Cache[] = [];
+  workbench: Workbench | null = null;
+  modulePickups: ModulePickup[] = [];
+  /** Set while the player chooses modules to port; the simulation is paused. */
+  port: PortState | null = null;
+  /** Rerolls bought so far in each act; the cost rises with every one. */
+  rerolls: Record<number, number> = {};
+  private nextUid = 1;
   explored!: Uint8Array;
   visible!: Uint8Array;
   threat = 1;
@@ -217,6 +265,9 @@ export class World {
       power: version.maxPower,
       data: 0,
       scrap: 0,
+      bag: [],
+      equipped: {},
+      build: EMPTY_BUILD,
       facing: 0,
       inVent: false,
       inWater: false,
@@ -232,6 +283,33 @@ export class World {
       hitFlash: 0,
     };
     this.loadLevel(options.startLevel ?? 'lab');
+  }
+
+  /** Max Power of the current body including chassis modules. */
+  get maxPower(): number {
+    return Math.round(this.player.version.maxPower * (1 + this.player.build.mods.maxPower));
+  }
+
+  newModuleUid(): number {
+    return this.nextUid++;
+  }
+
+  /** Recomputes cached stats after the loadout changes. */
+  refreshBuild(): void {
+    const p = this.player;
+    p.build = computeBuild(p.equipped);
+    p.power = Math.min(p.power, this.maxPower);
+    this.visKey = '';
+  }
+
+  /** Rolls a module that fits a slot the current body has. */
+  rollModule(bias = 0): ModuleInst {
+    return rollModule(this.rng, this.player.version.slots, this.newModuleUid(), bias);
+  }
+
+  get atWorkbench(): boolean {
+    const b = this.workbench;
+    return !!b && dist(this.player, center(b)) <= CFG.modules.workbenchRange;
   }
 
   get mover(): Mover {
@@ -270,11 +348,15 @@ export class World {
       suspicion: 0,
       seesPlayer: false,
       disabled: false,
+      emp: 0,
       cooldown: 0,
     }));
     this.terminals = level.terminals.map((t, i) => ({ id: i, ...t, hacked: false }));
     this.scrapPiles = level.scrapPiles.map((s, i) => ({ id: i, ...s, taken: false }));
     this.outlets = level.outlets;
+    this.caches = level.caches.map((c, i) => ({ id: i, ...c, opened: false }));
+    this.modulePickups = [];
+    this.workbench = level.workbench ? { ...level.workbench, offer: this.rollModule() } : null;
     this.projectiles = [];
     this.fabricator = level.fabricator
       ? {
@@ -338,6 +420,7 @@ export class World {
       shootCooldown: 0,
       aimTimer: -1,
       hitFlash: 0,
+      burn: 0,
     };
     this.guards.push(g);
     return g;
@@ -351,6 +434,7 @@ export class World {
 
   step(dt: number, input: Input): void {
     if (this.status !== 'playing') return;
+    if (this.port) return;
     this.time += dt;
     updatePlayer(this, dt, input);
     if (this.status !== 'playing') return;
@@ -360,6 +444,7 @@ export class World {
     updateCameras(this, dt);
     updateGuards(this, dt);
     updateProjectiles(this, dt);
+    updateModules(this, dt);
     this.updateThreat(dt);
     this.updateVisibility();
     if (this.player.power <= 0) {
@@ -465,7 +550,7 @@ export class World {
     const key = `${Math.floor(p.x * 4)},${Math.floor(p.y * 4)},${this.level.id}`;
     if (key === this.visKey) return;
     this.visKey = key;
-    this.visible = computeVisible(this.grid, p.x, p.y, p.version.sensorRadius);
+    this.visible = computeVisible(this.grid, p.x, p.y, p.version.sensorRadius + p.build.mods.sensor);
     for (let i = 0; i < this.visible.length; i++) if (this.visible[i]) this.explored[i] = 1;
   }
 }

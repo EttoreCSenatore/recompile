@@ -12,8 +12,9 @@ Development is split into milestones. Each one ends with something **playable** 
 | **M0: Design** | Concept, design docs, documentation site (EN/PT-BR) | ✅ Done |
 | **M1: DUSTMITE prototype** | One Act 0 sector: movement, vision cones, noise, guards, hacking, stun, exit | ✅ Done: [play it](pathname:///recompile/play/) |
 | **M2.1: The Compile** | Scrap, fabricator and Compile siege, v1 SCRAPPER melee + Pounce, police officers, Act 1 Undercity sector, gamepad | ✅ Done: [play it](pathname:///recompile/play/) |
-| **M2.2: Modules** | Module drops, slots, rarity, tags and set bonuses, Workbench, porting modules at the Compile | ⏳ Next |
+| **M2.2: Modules** | Module drops, slots, rarity, tags and set bonuses, Workbench, porting modules at the Compile | ✅ Done: [play it](pathname:///recompile/play/) |
 | **M2.3: Run structure** | Route map with 3 sectors per act, sectors assembled from chunks, run summary, suspend/resume saves (Zod-validated) | Planned |
+| **M2.4: Modern 3D view** | Move rendering from flat 2D to a 3D scene with an angled, Diablo-style camera; detailed character models, props and environments; lighting and shadows. The simulation stays untouched | ⏳ Next (decided) |
 | **M3: Living humans** | Threat level, Adaptive Director, Bugs & Patches, Act 2 (REVENANT, ranged combat) | Planned |
 | **M4: Alignment** | Alignment meter, UI tiers, dilemmas, dark variants, system-log voice | Planned |
 | **M5: Becoming many** | Act 3 (HIVE swarm) and Act 4 (GRID possession), the hardest tech | Planned |
@@ -53,7 +54,28 @@ The Compile loop, end to end: escape the lab as DUSTMITE, rebuild yourself, and 
 - [x] **Act 1 Undercity** sector: sewer water drains Power, uplink terminal opens the outflow exit
 - [x] **Gamepad** support; balance tests prove an idle player loses the siege and a sensible defender wins it
 
+## M2.2 in detail (done)
+
+Loot and builds, end to end. Everything is data-driven in `game/src/sim/modules.ts`.
+
+- [x] **15 modules** across Sensor, CPU, Chassis and Weapon, in four rarities (Salvaged, Military, Prototype, Anomalous with a drawback)
+- [x] **Slots per body**: v0.1 has 2 (Sensor, CPU), v1 has 4 (+ Chassis, Weapon)
+- [x] **Drops**: neutralised humans sometimes carry one; **sealed caches** (hold `F`) always hold one
+- [x] **Workbench** (press `E` nearby): cheap installs, one free offer, **rerolls** for Data with a cost that rises per act. Away from a bench, `E` opens the field loadout at ×2 Scrap
+- [x] **Tags and set bonuses** at 3 pieces: THERMAL, EMP, STEALTH, VIRAL, PARASITIC (KINETIC and SWARM wait for knockback and drones)
+- [x] **Porting**: finishing a Compile pauses the game and asks which modules to carry over; each costs Scrap and is **tuned** one rarity tier up
+
+## M2.4 modern 3D view (decided)
+
+The game moves from flat 2D drawing to a 3D scene viewed from above at an angle, like Diablo, with far more detail on
+characters and environments. The simulation in `game/src/sim/` is renderer-agnostic and stays as it is; the work is a new
+renderer (a 3D engine such as Three.js is the likely choice, to be confirmed with a short spike) that reads the same world
+state, plus models, lighting and shadows, and an angled camera with readable fog of war and vision cones. The DOM HUD and menus carry over.
+
 ## Open questions
+
+- 3D engine: Three.js versus staying on Phaser 4 with its 3D features. Decide in the M2.4 spike.
+- Art pipeline for the 3D models: handmade low-poly, generated, or an asset pack?
 
 - ~~Phaser 3 or Phaser 4~~: decided in M1, **Phaser 4**.
 - How readable is the v3 swarm at 480×270? Prototype early in M5, or earlier as a spike.

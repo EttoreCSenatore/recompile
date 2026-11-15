@@ -1,6 +1,7 @@
 import { CFG } from '../config';
 import { VERSIONS } from '../versions';
 import { center, type World } from '../world';
+import { beginPort } from './loadout';
 
 /** Starts the Compile siege. Resources are only spent if the Compile succeeds. */
 export function startCompile(w: World): boolean {
@@ -63,7 +64,8 @@ function completeCompile(w: World): void {
   p.data -= next.data;
   p.scrap -= next.scrap;
   p.version = VERSIONS[next.id];
-  p.power = p.version.maxPower;
+  beginPort(w);
+  p.power = w.maxPower;
   // The new body is assembled on the fabricator itself.
   Object.assign(p, center(fab), { inVent: false, interact: null, pounce: null, abilityCooldown: 0 });
   fab.state = 'done';

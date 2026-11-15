@@ -50,6 +50,10 @@ export interface LevelData {
   cameras: CameraDef[];
   guards: GuardDef[];
   fabricator: FabricatorDef | null;
+  /** Sealed caches (hold F) that always contain a module. */
+  caches: Vec[];
+  /** Where modules are installed cheaply and offers can be rerolled. */
+  workbench: Vec | null;
   intro: string[];
 }
 
