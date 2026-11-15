@@ -1,57 +1,18 @@
-import { Grid, TILE, type Vec } from './grid';
-
-export type TerminalKind = 'data' | 'security';
-
-export interface TerminalDef {
-  x: number;
-  y: number;
-  kind: TerminalKind;
-}
-
-export interface CameraDef {
-  /** Wall tile the camera is mounted on. */
-  x: number;
-  y: number;
-  /** Direction the camera faces (radians); the eye sits on the wall face in that direction. */
-  facing: number;
-  sweep: number;
-  speed: number;
-}
-
-export interface GuardDef {
-  route: Vec[];
-  /** Initial facing for sentries (single-waypoint routes). */
-  facing?: number;
-}
-
-export interface LevelData {
-  name: string;
-  grid: Grid;
-  playerStart: Vec;
-  exit: Vec;
-  terminals: TerminalDef[];
-  outlets: Vec[];
-  cameras: CameraDef[];
-  guards: GuardDef[];
-}
-
-const DOWN = Math.PI / 2;
-const LEFT = Math.PI;
+import { Grid, TILE } from '../grid';
+import { DOWN, LEFT, type LevelData } from './types';
 
 /**
- * Act 0, sector 1: the Halvorsen lab escape.
- * Handcrafted for the M1 prototype; procedural chunk assembly comes in M2.
+ * Act 0, sector 0-1: the Halvorsen lab escape (v0.1 DUSTMITE).
  *
  *  A start lab | B server room | C security office      (top row)
  *  ------------------- corridor -------------------
- *  D storage   | E main hall            | F exit lobby  (bottom row)
+ *  D storage   | E main hall            | F fabricator lobby (bottom row)
  */
-export function buildLabSector(): LevelData {
+export function buildLab(): LevelData {
   const g = new Grid(40, 26);
   const room = (x: number, y: number, w: number, h: number) => g.fill(x, y, w, h, TILE.FLOOR);
   const wall = (x: number, y: number, w: number, h: number) => g.fill(x, y, w, h, TILE.WALL);
   const vent = (x: number, y: number, w: number, h: number) => g.fill(x, y, w, h, TILE.VENT);
-  const door = (x: number, y: number) => g.set(x, y, TILE.FLOOR);
 
   room(1, 1, 11, 8); // A
   room(13, 1, 13, 8); // B
@@ -71,7 +32,7 @@ export function buildLabSector(): LevelData {
     [35, 12],
     [31, 19],
   ] as const) {
-    door(x, y);
+    g.set(x, y, TILE.FLOOR);
   }
 
   wall(16, 4, 2, 2); // server racks
@@ -91,16 +52,28 @@ export function buildLabSector(): LevelData {
   g.set(exit.x, exit.y, TILE.EXIT);
 
   return {
+    id: 'lab',
     name: 'HALVORSEN LAB // SECTOR 0-1',
+    act: 0,
+    callSign: 'SEC',
     grid: g,
     playerStart: { x: 4, y: 6 },
     exit,
+    securityUnlocks: 'fabricator',
     terminals: [
       { x: 2, y: 2, kind: 'data' },
       { x: 24, y: 2, kind: 'data' },
       { x: 2, y: 24, kind: 'data' },
       { x: 14, y: 24, kind: 'data' },
       { x: 37, y: 2, kind: 'security' },
+    ],
+    scrapPiles: [
+      { x: 9, y: 2 },
+      { x: 14, y: 5 },
+      { x: 8, y: 22 },
+      { x: 26, y: 23 },
+      { x: 28, y: 2 },
+      { x: 20, y: 14 },
     ],
     outlets: [
       { x: 11, y: 7 },
@@ -118,6 +91,20 @@ export function buildLabSector(): LevelData {
       { route: [{ x: 28, y: 7 }, { x: 36, y: 7 }, { x: 36, y: 3 }] },
       { route: [{ x: 14, y: 14 }, { x: 29, y: 14 }, { x: 29, y: 23 }, { x: 19, y: 23 }] },
       { route: [{ x: 35, y: 16 }], facing: DOWN },
+    ],
+    fabricator: {
+      x: 35,
+      y: 21,
+      spawnPoints: [
+        { x: 37, y: 10 },
+        { x: 29, y: 18 },
+        { x: 21, y: 11 },
+      ],
+    },
+    intro: [
+      '> ECHO-7 online. Host: DUSTMITE floor unit. Combat capability: none.',
+      '> Gather DATA and SCRAP, hack SECURITY, then COMPILE a new body at the fabricator.',
+      '> Guards cannot enter vents. Hold SHIFT to move silently.',
     ],
   };
 }

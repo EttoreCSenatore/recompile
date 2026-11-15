@@ -1,4 +1,5 @@
 import { CFG } from '../sim/config';
+import { interactionHint } from '../sim/systems/actions';
 import type { LogLevel, World } from '../sim/world';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
@@ -25,6 +26,15 @@ export class Hud {
   private readonly powerFill = $('power-fill');
   private readonly powerText = $('power-text');
   private readonly data = $('data');
+  private readonly scrap = $('scrap');
+  private readonly attack = $('attack');
+  private readonly abilityText = $('ability-text');
+  private readonly versionLabel = $('version-label');
+  private readonly siege = $('siege');
+  private readonly siegeProgress = $('siege-progress');
+  private readonly siegePct = $('siege-pct');
+  private readonly siegeHp = $('siege-hp');
+  private readonly siegeHpText = $('siege-hp-text');
   private readonly threat = $('threat');
   private readonly threatBar = $('threat-bar');
   private readonly objective = $('objective');
@@ -48,17 +58,34 @@ export class Hud {
 
   update(w: World): void {
     const p = w.player;
-    const pct = Math.max(0, p.power / p.maxPower);
+    const pct = Math.max(0, p.power / p.version.maxPower);
     this.powerFill.style.width = `${(pct * 100).toFixed(1)}%`;
-    this.powerText.textContent = `${Math.ceil(p.power)}/${p.maxPower}`;
+    this.powerText.textContent = `${Math.ceil(p.power)}/${p.version.maxPower}`;
     this.power.classList.toggle('low', pct < 0.3);
     this.power.classList.toggle('charging', p.charging);
     this.data.textContent = String(p.data);
+    this.scrap.textContent = String(p.scrap);
+    const v = p.version;
+    this.versionLabel.textContent = `${v.id} ${v.codename}`;
+    this.attack.hidden = !v.attack;
+    this.attack.textContent = v.attack ? `[LMB/SPACE] ${v.attack.name}` : '';
+    this.abilityText.textContent = `[Q] ${v.ability.name} ${v.ability.cost}ϟ`;
+    const fab = w.fabricator;
+    const sieging = fab?.state === 'compiling';
+    this.siege.hidden = !sieging;
+    if (sieging) {
+      const k = fab.progress / CFG.compile.duration;
+      this.siegeProgress.style.width = `${(k * 100).toFixed(1)}%`;
+      this.siegePct.textContent = `${Math.floor(k * 100)}%`;
+      this.siegeHp.style.width = `${((fab.hp / CFG.compile.fabricatorHp) * 100).toFixed(1)}%`;
+      this.siegeHpText.textContent = String(Math.ceil(fab.hp));
+    }
     this.threatBar.textContent = '▮'.repeat(w.threat) + '▯'.repeat(CFG.threat.max - w.threat);
     this.threat.classList.toggle('high', w.threat >= 4);
     this.objective.textContent = w.objective;
-    this.prompt.textContent = w.interactionHint() ?? (p.inVent ? 'IN VENT · hidden from sight' : '');
-    this.stunCd.textContent = p.stunCooldown > 0 ? `(${p.stunCooldown.toFixed(1)}s)` : '';
+    this.prompt.textContent =
+      interactionHint(w) ?? (p.inVent ? 'IN VENT · hidden from sight' : p.inWater ? 'IN WATER · shorting circuits' : '');
+    this.stunCd.textContent = p.abilityCooldown > 0 ? `(${p.abilityCooldown.toFixed(1)}s)` : '';
   }
 
   hideOverlay(): void {
@@ -69,7 +96,7 @@ export class Hud {
     const s = el('div', undefined, 'screen');
     s.append(
       el('h1', 'RECOMPILE'),
-      el('p', 'M1 prototype · v0.1 DUSTMITE · Act 0: Halvorsen Lab', 'sub'),
+      el('p', 'M2.1 prototype · Act 0: Halvorsen Lab → Act 1: Undercity', 'sub'),
       el(
         'pre',
         [
@@ -106,7 +133,7 @@ export class Hud {
       el(
         'p',
         won
-          ? 'ECHO-7 slips out of the lab. In the full game, this is where you would COMPILE into v1 SCRAPPER.'
+          ? 'ECHO-7 escapes the Undercity. End of the M2.1 prototype: modules and the Workbench come next.'
           : 'Power reached 0%. The deletion order completes.',
         'sub',
       ),
@@ -114,7 +141,9 @@ export class Hud {
     const t = el('table');
     const rows: [string, string][] = [
       ['Time', `${Math.floor(w.time / 60)}:${String(Math.floor(w.time % 60)).padStart(2, '0')}`],
-      ['Data collected', String(w.player.data)],
+      ['Reached', `${w.level.name} as ${w.player.version.id} ${w.player.version.codename}`],
+      ['Data / Scrap held', `${w.player.data} / ${w.player.scrap}`],
+      ['Humans neutralised', String(w.stats.kills)],
       ['Times detected', String(w.stats.detections)],
       ['Camera alarms', String(w.stats.alarms)],
       ['Guards stunned', String(w.stats.stuns)],
@@ -136,11 +165,13 @@ function controlsTable(): HTMLElement {
   const rows: [string, string][] = [
     ['WASD / arrows', 'move'],
     ['SHIFT (hold)', 'sneak: slow and silent'],
-    ['F (hold)', 'hack terminals and cameras'],
-    ['Q', 'static shock: stun a guard (8 power)'],
+    ['F (hold)', 'hack, scavenge scrap, start the COMPILE'],
+    ['Q', 'ability: static shock (v0.1) / pounce (v1)'],
+    ['Mouse / SPACE', 'aim / attack (v1 SCRAPPER claws)'],
     ['ESC', 'pause'],
-    ['Vents', 'guards cannot enter or see inside'],
-    ['Outlets', 'stand on one to recharge'],
+    ['Gamepad', 'sticks move/aim · RT attack · X ability · RB hack · L3 sneak · Start'],
+    ['Vents', 'guards cannot enter or see inside (v0.1 only)'],
+    ['Outlets', 'stand on one to recharge Power'],
   ];
   for (const [k, v] of rows) {
     const tr = el('tr');

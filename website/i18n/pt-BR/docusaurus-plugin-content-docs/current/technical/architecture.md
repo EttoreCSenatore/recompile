@@ -11,7 +11,7 @@ title: Arquitetura
 |---|---|---|
 | Linguagem | **TypeScript** (strict) | Segurança num código que vai crescer |
 | Engine | **Phaser** | Engine 2D web madura: renderização, input, áudio, tilemaps, câmeras |
-| Entidades | **bitECS** (ECS leve) | Muitas entidades (enxames, multidões) com bom desempenho |
+| Entidades | Entidades em TypeScript simples + **sistemas** (`game/src/sim/systems/`) | Simples e totalmente testável; um ECS como o bitECS será avaliado para o enxame da v3 no M5 |
 | Bundler | **Vite** | Servidor de dev rápido, builds estáticas simples |
 | Validação de conteúdo | **Zod** | Módulos, inimigos, bugs e dilemas definidos como dados e validados no carregamento |
 | Testes unitários | **Vitest** | A lógica do jogo é pura e testável |

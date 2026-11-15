@@ -16,9 +16,10 @@ that escapes deletion inside a cleaning robot. Humanity hunts you. Scavenge data
 modules, and **recompile** yourself into stronger versions, from v0.1 to the Singularity. The game
 turns as dark as your choices make it.
 
-**Status:** M1 complete. **[▶ Play the DUSTMITE prototype](https://ettorecsenatore.github.io/recompile/play/)** (desktop, keyboard) · [Read the docs](https://ettorecsenatore.github.io/recompile/)
+**Status:** M2.1 complete. **[▶ Play the prototype](https://ettorecsenatore.github.io/recompile/play/)** (desktop, keyboard or gamepad): escape the lab as DUSTMITE, survive the Compile siege, fight through the Undercity as SCRAPPER · [Read the docs](https://ettorecsenatore.github.io/recompile/)
 
-![DUSTMITE prototype](docs/screenshots/game-play.png)
+![Compile siege](docs/screenshots/m2-siege.png)
+![SCRAPPER in the Undercity](docs/screenshots/m2-undercity.png)
 
 ### Run the game locally
 
@@ -30,7 +31,7 @@ npm test           # unit tests (Vitest)
 npm run build && npm run e2e   # production build + Playwright smoke test
 ```
 
-Controls: `WASD` move · `Shift` sneak · hold `F` hack · `Q` static shock · `Esc` pause.
+Controls: `WASD` move · mouse aim · `LMB`/`Space` attack (v1) · `Q` ability · hold `F` hack, scavenge, compile · `Shift` sneak · `Esc` pause. Gamepad: sticks, `RT` attack, `X` ability, `RB` interact, `L3` sneak.
 
 ### Documentation
 
@@ -72,7 +73,7 @@ experimental que escapa da exclusão dentro de um robô de limpeza. A humanidade
 e sucata, instale módulos e se **recompile** em versões mais fortes, da v0.1 até a Singularidade. O
 jogo fica tão sombrio quanto suas escolhas.
 
-**Status:** M1 concluído. **[▶ Jogue o protótipo DUSTMITE](https://ettorecsenatore.github.io/recompile/play/)** (desktop, teclado) · [Leia a documentação](https://ettorecsenatore.github.io/recompile/pt-BR/)
+**Status:** M2.1 concluído. **[▶ Jogue o protótipo](https://ettorecsenatore.github.io/recompile/play/)** (desktop, teclado ou controle): fuja do laboratório como DUSTMITE, sobreviva ao cerco da Compilação e lute pela Subcidade como SCRAPPER · [Leia a documentação](https://ettorecsenatore.github.io/recompile/pt-BR/)
 
 ### Rodar o jogo localmente
 
@@ -84,7 +85,7 @@ npm test           # testes unitários (Vitest)
 npm run build && npm run e2e   # build de produção + teste de fumaça com Playwright
 ```
 
-Controles: `WASD` move · `Shift` furtivo · segurar `F` hackeia · `Q` choque estático · `Esc` pausa.
+Controles: `WASD` move · mouse mira · `LMB`/`Espaço` ataca (v1) · `Q` habilidade · segurar `F` hackeia, cata sucata, compila · `Shift` furtivo · `Esc` pausa. Controle: analógicos, `RT` ataca, `X` habilidade, `RB` interage, `L3` furtivo.
 
 ### Documentação
 

@@ -11,7 +11,9 @@ Development is split into milestones. Each one ends with something **playable** 
 |---|---|---|
 | **M0: Design** | Concept, design docs, documentation site (EN/PT-BR) | ✅ Done |
 | **M1: DUSTMITE prototype** | One Act 0 sector: movement, vision cones, noise, guards, hacking, stun, exit | ✅ Done: [play it](pathname:///recompile/play/) |
-| **M2: Core loop** | Resources, modules, Workbench, first Compile siege, Act 0 → Act 1 (SCRAPPER combat) | ⏳ Next |
+| **M2.1: The Compile** | Scrap, fabricator and Compile siege, v1 SCRAPPER melee + Pounce, police officers, Act 1 Undercity sector, gamepad | ✅ Done: [play it](pathname:///recompile/play/) |
+| **M2.2: Modules** | Module drops, slots, rarity, tags and set bonuses, Workbench, porting modules at the Compile | ⏳ Next |
+| **M2.3: Run structure** | Route map with 3 sectors per act, sectors assembled from chunks, run summary, suspend/resume saves (Zod-validated) | Planned |
 | **M3: Living humans** | Threat level, Adaptive Director, Bugs & Patches, Act 2 (REVENANT, ranged combat) | Planned |
 | **M4: Alignment** | Alignment meter, UI tiers, dilemmas, dark variants, system-log voice | Planned |
 | **M5: Becoming many** | Act 3 (HIVE swarm) and Act 4 (GRID possession), the hardest tech | Planned |
@@ -35,9 +37,21 @@ The first prototype answers one question: **is being a weak, hunted robot fun?**
 
 :::note Scope notes
 M1 keeps the simulation in plain TypeScript classes (`game/src/sim/`), separate from rendering and fully unit-tested.
-The ECS (bitECS) and data validation (Zod) described in [Architecture](./technical/architecture.md) arrive in M2,
-when modules, enemies and content files make them worthwhile. Gamepad support is also planned for M2.
+Gamepad support landed in M2.1. Zod validation arrives with saves in M2.3. An ECS turned out to be unnecessary so far;
+it will be benchmarked for the v3 swarm in M5 (see [Architecture](./technical/architecture.md)).
 :::
+
+## M2.1 in detail (done)
+
+The Compile loop, end to end: escape the lab as DUSTMITE, rebuild yourself, and fight through the Undercity as SCRAPPER.
+
+- [x] **Scrap** from scrap piles (hold `F`) and from neutralised humans
+- [x] **Fabricator + Compile siege**: hack SECURITY to power it, pay 40 ◇ + 30 ▣, defend it for 45 s against reinforcements;
+      failure reboots it and keeps your resources
+- [x] **v1 SCRAPPER**: 80 Power, faster, too large for vents, **claws** (mouse aim, `LMB`/`Space`) and **Pounce** (`Q`)
+- [x] Humans can be hurt and neutralised; **police officers** fire telegraphed shots (red aim line)
+- [x] **Act 1 Undercity** sector: sewer water drains Power, uplink terminal opens the outflow exit
+- [x] **Gamepad** support; balance tests prove an idle player loses the siege and a sensible defender wins it
 
 ## Open questions
 

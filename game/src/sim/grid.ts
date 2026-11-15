@@ -1,6 +1,11 @@
-export const TILE = { WALL: 0, FLOOR: 1, VENT: 2, EXIT: 3 } as const;
+export const TILE = { WALL: 0, FLOOR: 1, VENT: 2, EXIT: 3, WATER: 4 } as const;
 export type TileType = (typeof TILE)[keyof typeof TILE];
-export type Mover = 'player' | 'guard';
+
+/**
+ * Who is moving: `player` fits through vents (v0.1), `large` is a player body too big
+ * for vents (v1+), `guard` is any human.
+ */
+export type Mover = 'player' | 'large' | 'guard';
 
 export interface Vec {
   x: number;
@@ -37,15 +42,16 @@ export class Grid {
 
   walkable(x: number, y: number, mover: Mover): boolean {
     const t = this.get(x, y);
-    if (t === TILE.FLOOR) return true;
+    if (t === TILE.FLOOR || t === TILE.WATER) return true;
     if (t === TILE.VENT) return mover === 'player';
-    if (t === TILE.EXIT) return mover === 'player' && this.exitOpen;
+    if (t === TILE.EXIT) return mover !== 'guard' && this.exitOpen;
     return false;
   }
 
   /** Blocks sight. Vents are opaque, so a player inside a vent cannot be seen. */
   opaque(x: number, y: number): boolean {
-    return this.get(x, y) !== TILE.FLOOR;
+    const t = this.get(x, y);
+    return t !== TILE.FLOOR && t !== TILE.WATER;
   }
 
   index(x: number, y: number): number {

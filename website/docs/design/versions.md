@@ -55,17 +55,18 @@ The Compile is the climax of every act: a **siege at a fabricator**.
 
 1. You reach the fabricator with enough **Data and Scrap** (the cost scales per act).
 2. You choose which modules to **port** (see [Modules](./modules.md#porting-modules-between-versions)).
-3. The fabricator starts building. A progress bar fills over **90–120 s** (*tuning*).
+3. The fabricator starts building. A progress bar fills over **45–120 s**, longer each act (*tuning*).
 4. Humans converge in waves. You defend the fabricator **with your old body**.
-5. If the fabricator is destroyed, the Compile fails and you must flee to a backup site
-   (harder, costs half your Data). If you die, the run ends.
+5. If the fabricator is destroyed, the Compile fails: it reboots after a few seconds and you can
+   try again. Data and Scrap are **only spent on success**, but the attackers are still there,
+   now hunting you. If you die, the run ends.
 6. At 100%, the old body collapses and ECHO **boots in the new one** with a full Power
    bar. The surviving attackers face the new version immediately, a deliberate power fantasy
    moment.
 
 | Act | Data cost | Scrap cost | Siege length (tuning) |
 |---|---|---|---|
-| 0 → v1 | 40 | 30 | 60 s |
+| 0 → v1 | 40 | 30 | 45 s |
 | 1 → v2 | 120 | 100 | 90 s |
 | 2 → v3 | 250 | 220 | 100 s |
 | 3 → v4 | 450 | 380 | 110 s |

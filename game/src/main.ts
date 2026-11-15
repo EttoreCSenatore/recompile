@@ -13,6 +13,7 @@ const game = new Phaser.Game({
   pixelArt: true,
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   banner: false,
+  input: { gamepad: true },
   scene: [new GameScene(seed)],
 });
 
