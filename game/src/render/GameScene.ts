@@ -5,6 +5,7 @@ import { castRay } from '../sim/los';
 import { randomSeed } from '../sim/rng';
 import { NO_INPUT, World, type Guard, type GuardState, type Input } from '../sim/world';
 import { Hud } from './hud';
+import { buildMenu, type MenuKind, type MenuModel } from './menu';
 
 const T = 16; // pixels per tile
 const STEP = 1 / 60; // fixed simulation step
@@ -47,7 +48,7 @@ const GUARD_CONE: Record<GuardState, [number, number]> = {
   down: [0, 0],
 };
 
-type Mode = 'title' | 'playing' | 'paused' | 'over';
+type Mode = 'title' | 'playing' | 'paused' | 'over' | 'menu';
 
 interface Fx {
   kind: 'ring' | 'slash' | 'tracer';
@@ -68,7 +69,7 @@ type Keys = Record<
 >;
 
 /** Gamepad buttons (standard mapping). */
-const PAD = { A: 0, X: 2, START: 9, L3: 10 } as const;
+const PAD = { A: 0, B: 1, X: 2, Y: 3, START: 9, L3: 10, UP: 12, DOWN: 13 } as const;
 
 export class GameScene extends Phaser.Scene {
   private world!: World;
@@ -87,6 +88,8 @@ export class GameScene extends Phaser.Scene {
   private fx: Fx[] = [];
   private mouseActiveUntil = 0;
   private padPrev: Record<number, boolean> = {};
+  private menuKind: MenuKind = 'loadout';
+  private menuIndex = 0;
 
   constructor(private readonly initialSeed: number) {
     super('game');
@@ -95,7 +98,7 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,SHIFT,F,SPACE', true) as Keys;
-    for (const code of ['ENTER', 'ESC', 'R', 'Q']) {
+    for (const code of ['ENTER', 'ESC', 'R', 'Q', 'E', 'X', 'UP', 'DOWN', 'W', 'S']) {
       kb.addKey(code, true);
       kb.on(`keydown-${code}`, (e: KeyboardEvent) => {
         if (!e.repeat) this.pressed.add(code);
@@ -125,6 +128,7 @@ export class GameScene extends Phaser.Scene {
 
   private newRun(seed: number): void {
     this.world = new World(seed);
+    this.menuIndex = 0;
     this.hud.reset(seed);
     this.acc = 0;
     this.fx = [];
@@ -147,11 +151,68 @@ export class GameScene extends Phaser.Scene {
 
   private setMode(mode: Mode): void {
     this.mode = mode;
-    this.hud.setVisible(mode === 'playing' || mode === 'paused');
+    this.hud.setVisible(mode === 'playing' || mode === 'paused' || mode === 'menu');
     if (mode === 'title') this.hud.showTitle(this.world.seed);
     else if (mode === 'paused') this.hud.showPause();
     else if (mode === 'over') this.hud.showEnd(this.world);
     else this.hud.hideOverlay();
+  }
+
+  private menu(): MenuModel {
+    return buildMenu(this.world, this.menuKind, () => this.closeMenu());
+  }
+
+  private openMenu(kind: MenuKind): void {
+    this.menuKind = kind;
+    this.menuIndex = 0;
+    this.mode = 'menu';
+    this.hud.setVisible(true);
+    this.hud.showMenu(this.menu(), this.menuIndex, (i) => this.pickRow(i));
+  }
+
+  private closeMenu(): void {
+    if (this.menuKind === 'port' && this.world.port) return; // must confirm the port first
+    this.setMode('playing');
+  }
+
+  private pickRow(i: number): void {
+    const row = this.menu().rows[i];
+    if (!row || row.disabled) return;
+    this.menuIndex = i;
+    row.act();
+    this.afterMenuAction();
+  }
+
+  private afterMenuAction(): void {
+    this.flushEvents();
+    if (this.mode !== 'menu') return;
+    if (this.menuKind === 'port' && !this.world.port) {
+      this.setMode('playing');
+      return;
+    }
+    const model = this.menu();
+    this.menuIndex = Math.min(this.menuIndex, model.rows.length - 1);
+    this.hud.showMenu(model, this.menuIndex, (i) => this.pickRow(i));
+  }
+
+  private updateMenu(k: { up: boolean; down: boolean; confirm: boolean; alt: boolean; close: boolean }): void {
+    if (k.close) {
+      this.closeMenu();
+      return;
+    }
+    const model = this.menu();
+    const n = model.rows.length;
+    if (k.up) this.menuIndex = (this.menuIndex + n - 1) % n;
+    if (k.down) this.menuIndex = (this.menuIndex + 1) % n;
+    if (k.up || k.down) this.hud.showMenu(model, this.menuIndex, (i) => this.pickRow(i));
+    if (k.confirm) this.pickRow(this.menuIndex);
+    else if (k.alt) {
+      const row = model.rows[this.menuIndex];
+      if (row?.alt) {
+        row.alt();
+        this.afterMenuAction();
+      }
+    }
   }
 
   update(_time: number, deltaMs: number): void {
@@ -164,7 +225,13 @@ export class GameScene extends Phaser.Scene {
     };
     const padConfirm = padEdge(PAD.A);
     const padStart = padEdge(PAD.START);
-    if (padEdge(PAD.X)) this.pressed.add('Q');
+    const padX = padEdge(PAD.X);
+    const padY = padEdge(PAD.Y);
+    const padB = padEdge(PAD.B);
+    const padUp = padEdge(PAD.UP);
+    const padDown = padEdge(PAD.DOWN);
+    if (padX && this.mode !== 'menu') this.pressed.add('Q');
+    if (padY) this.pressed.add('E');
 
     const enter = this.pressed.delete('ENTER') || padConfirm;
     const esc = this.pressed.delete('ESC') || padStart;
@@ -190,7 +257,20 @@ export class GameScene extends Phaser.Scene {
           this.setMode('playing');
         }
         break;
+      case 'menu':
+        this.updateMenu({
+          up: this.pressed.delete('UP') || this.pressed.delete('W') || padUp,
+          down: this.pressed.delete('DOWN') || this.pressed.delete('S') || padDown,
+          confirm: enter,
+          alt: this.pressed.delete('X') || padX,
+          close: this.pressed.delete('E') || esc || padB,
+        });
+        break;
       case 'playing':
+        if (this.pressed.delete('E')) {
+          this.openMenu('loadout');
+          break;
+        }
         if (esc) {
           this.setMode('paused');
           break;
@@ -200,6 +280,8 @@ export class GameScene extends Phaser.Scene {
     }
     // The ability press stays queued until a simulation step consumes it; drop it outside gameplay.
     if (this.mode !== 'playing') this.pressed.delete('Q');
+    if (this.mode !== 'menu') for (const k of ['UP', 'DOWN', 'W', 'S', 'X']) this.pressed.delete(k);
+    if (this.mode !== 'playing' && this.mode !== 'menu') this.pressed.delete('E');
 
     this.updateFx(deltaMs / 1000);
     this.render();
@@ -220,6 +302,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.flushEvents();
     if (this.world.status !== 'playing') this.setMode('over');
+    else if (this.world.port) this.openMenu('port');
     const p = this.world.player;
     this.follow.x = p.x * T;
     this.follow.y = p.y * T;
@@ -359,6 +442,30 @@ export class GameScene extends Phaser.Scene {
       d.fillStyle(COLORS.scrapLight, a).fillRect(px + 5, py + 5, 4, 4).fillRect(px + 9, py + 7, 3, 2);
     }
 
+    for (const c of w.caches) {
+      const px = c.x * T;
+      const py = c.y * T;
+      const a = c.opened ? 0.3 : 1;
+      d.fillStyle(0x3a3f4a, a).fillRect(px + 2, py + 4, 12, 9);
+      d.lineStyle(1, COLORS.blue, a).strokeRect(px + 2, py + 4, 12, 9);
+      d.fillStyle(c.opened ? 0x333333 : COLORS.blue, a).fillRect(px + 7, py + 7, 2, 3);
+    }
+
+    const bench = w.workbench;
+    if (bench) {
+      const px = bench.x * T;
+      const py = bench.y * T;
+      d.fillStyle(0x4a3a22).fillRect(px + 1, py + 4, 14, 9);
+      d.lineStyle(1, COLORS.outlet).strokeRect(px + 1, py + 4, 14, 9);
+      d.fillStyle(bench.offer ? COLORS.outlet : 0x555555, 0.5 + 0.5 * Math.sin(now / 250)).fillRect(px + 6, py + 6, 4, 4);
+    }
+
+    for (const pk of w.modulePickups) {
+      const bob = Math.sin(now / 200 + pk.id) * 1.5;
+      d.fillStyle(0xffffff, 0.9).fillRect(pk.x * T - 3, pk.y * T - 3 + bob, 6, 6);
+      d.lineStyle(1, COLORS.blue).strokeRect(pk.x * T - 4, pk.y * T - 4 + bob, 8, 8);
+    }
+
     for (const t of w.terminals) {
       const px = t.x * T;
       const py = t.y * T;
@@ -370,7 +477,7 @@ export class GameScene extends Phaser.Scene {
     this.drawFabricator(now);
 
     for (const c of w.cameras) {
-      if (c.disabled || c.cooldown > 0) continue;
+      if (c.disabled || c.cooldown > 0 || c.emp > 0) continue;
       this.drawCone(c.x, c.y, c.facing, CFG.camera.fov, CFG.camera.range, c.seesPlayer ? COLORS.red : 0x8fd3ff, c.seesPlayer ? 0.22 : 0.1);
     }
     for (const g of w.guards) {

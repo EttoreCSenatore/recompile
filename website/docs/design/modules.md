@@ -58,3 +58,11 @@ do not port are lost. This keeps builds coherent across a run while forcing comm
 
 At a Workbench you can spend Data to **reroll** the next module offer. The cost rises each time
 within an act.
+
+## Implemented in M2.2
+
+:::note Prototype status
+The prototype has 15 modules for Sensor, CPU, Chassis and Weapon, the Workbench (`E`), sealed caches, drops from
+humans, rerolls, porting with tuning, and the THERMAL, EMP, STEALTH, VIRAL and PARASITIC set bonuses. Locomotion and
+Network slots, KINETIC and SWARM, and the full module pool arrive with later bodies and milestones.
+:::

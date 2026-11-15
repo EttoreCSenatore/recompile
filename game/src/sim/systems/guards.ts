@@ -4,6 +4,7 @@ import type { Vec } from '../grid';
 import { angleDiff, inCone } from '../los';
 import { findPath } from '../pathfinding';
 import { center, dist, type Guard, type World } from '../world';
+import { dropModule } from './loadout';
 
 /**
  * Human AI: patrol → suspicious → investigate → alert, plus stun, death,
@@ -168,22 +169,44 @@ function zapPlayer(w: World, dps: number, dt: number): void {
   if (Math.floor(w.time * 4) !== Math.floor((w.time - dt) * 4)) w.emit({ type: 'zap', x: p.x, y: p.y });
 }
 
-export function damageGuard(w: World, g: Guard, damage: number): void {
+export function damageGuard(w: World, g: Guard, damage: number, source: 'hit' | 'burn' = 'hit'): void {
   if (g.state === 'down') return;
+  const b = w.player.build;
+  const burning = g.burn > 0;
+  if (source === 'hit') {
+    // Set bonuses: STEALTH opens with a big hit on the unaware, THERMAL ignites and punishes the burning.
+    const unaware = g.state === 'patrol' || g.state === 'suspicious' || g.state === 'investigate' || g.state === 'stunned';
+    if (b.tags.has('STEALTH') && unaware) {
+      damage *= CFG.modules.stealthMult;
+      w.log('> STEALTH strike!', 'good');
+    }
+    if (b.tags.has('THERMAL')) {
+      if (burning) damage *= 1 + CFG.modules.burnBonus;
+      g.burn = CFG.modules.burnTime;
+    }
+    if (b.tags.has('PARASITIC')) {
+      const gain = Math.min(damage, g.hp) * CFG.modules.leech;
+      w.player.power = Math.min(w.maxPower, w.player.power + gain);
+    }
+  }
   g.hp -= damage;
-  g.hitFlash = 0.15;
-  w.emit({ type: 'hit', x: g.x, y: g.y });
+  if (source === 'hit') {
+    g.hitFlash = 0.15;
+    w.emit({ type: 'hit', x: g.x, y: g.y });
+  }
   if (g.hp <= 0) {
     g.state = 'down';
     g.aimTimer = -1;
     g.seesPlayer = false;
+    g.burn = 0;
     w.stats.kills++;
     w.player.scrap += CFG.guard.salvage;
     w.log(`> ${g.name} neutralised. +${CFG.guard.salvage} SCRAP salvaged from gear.`, 'warn');
     w.emitNoise(g.x, g.y, 3);
+    dropModule(w, g);
     return;
   }
-  if (g.state !== 'alert' && g.state !== 'stunned') {
+  if (source === 'hit' && g.state !== 'alert' && g.state !== 'stunned') {
     g.lastSeen = { x: w.player.x, y: w.player.y };
     goAlert(w, g);
   }

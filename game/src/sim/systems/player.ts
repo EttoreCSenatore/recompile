@@ -32,7 +32,7 @@ export function updatePlayer(w: World, dt: number, input: Input): void {
       landPounce(w);
     }
   } else {
-    const speed = input.sneak ? v.sneakSpeed : v.speed;
+    const speed = (input.sneak ? v.sneakSpeed : v.speed) * (1 + p.build.mods.speed);
     const moved = moveCircle(w.grid, p, mx * speed * dt, my * speed * dt, v.radius, w.mover);
     p.moving = moved > 0.0001;
   }
@@ -63,7 +63,7 @@ export function updatePlayer(w: World, dt: number, input: Input): void {
     p.stepTimer += dt;
     if (p.stepTimer >= CFG.player.stepNoiseEvery) {
       p.stepTimer = 0;
-      w.emitNoise(p.x, p.y, noise);
+      w.emitNoise(p.x, p.y, noise * (1 - p.build.mods.quiet));
     }
   } else {
     p.stepTimer = 0;
@@ -71,7 +71,7 @@ export function updatePlayer(w: World, dt: number, input: Input): void {
 
   p.charging = !p.inVent && w.outlets.some((o) => dist(p, center(o)) <= CFG.outlet.range);
   if (p.charging) p.power += CFG.outlet.rate * dt;
-  else if (!w.anyAlert()) p.power += v.regen * dt;
+  else if (!w.anyAlert()) p.power += v.regen * (1 + p.build.mods.regen) * dt;
   if (p.inWater) p.power -= CFG.water.drain * dt;
-  p.power = Math.min(v.maxPower, p.power);
+  p.power = Math.min(w.maxPower, p.power);
 }

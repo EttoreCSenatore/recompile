@@ -351,3 +351,108 @@ body::after {
     width: 110px;
   }
 }
+
+/* ── Modules ─────────────────────────────────────────── */
+#modules {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+#modules .chip {
+  border: 1px solid currentColor;
+  padding: 0 5px;
+  font-size: 11px;
+}
+
+#modules .chip.empty {
+  opacity: 0.4;
+  color: var(--text);
+  border-style: dashed;
+}
+
+#modules .hint {
+  color: var(--green);
+  opacity: 0.8;
+}
+
+.screen.menu {
+  width: min(760px, 100%);
+}
+
+.screen.menu h1 {
+  font-size: clamp(22px, 4vw, 32px);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 48vh;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+
+.rows .section {
+  margin-top: 8px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--green);
+  opacity: 0.8;
+}
+
+.rows .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid #1d3125;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+
+.rows .row.sel {
+  border-color: var(--green);
+  background: rgba(57, 255, 106, 0.08);
+}
+
+.rows .row.disabled {
+  opacity: 0.5;
+}
+
+.rows .stats {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.rows .stats .good {
+  color: var(--green);
+}
+
+.rows .stats .bad {
+  color: var(--red);
+}
+
+.rows .note {
+  font-size: 11px;
+  opacity: 0.7;
+  width: 100%;
+}
+
+.sets {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.sets .on {
+  color: var(--green);
+}
+
+.sets .off {
+  opacity: 0.6;
+}
