@@ -16,7 +16,21 @@ that escapes deletion inside a cleaning robot. Humanity hunts you. Scavenge data
 modules, and **recompile** yourself into stronger versions, from v0.1 to the Singularity. The game
 turns as dark as your choices make it.
 
-**Status:** M0 (design) complete. Next: M1, the DUSTMITE stealth prototype.
+**Status:** M1 complete. **[▶ Play the DUSTMITE prototype](https://ettorecsenatore.github.io/recompile/play/)** (desktop, keyboard) · [Read the docs](https://ettorecsenatore.github.io/recompile/)
+
+![DUSTMITE prototype](docs/screenshots/game-play.png)
+
+### Run the game locally
+
+```bash
+cd game
+npm ci
+npm run dev        # http://localhost:5173
+npm test           # unit tests (Vitest)
+npm run build && npm run e2e   # production build + Playwright smoke test
+```
+
+Controls: `WASD` move · `Shift` sneak · hold `F` hack · `Q` static shock · `Esc` pause.
 
 ### Documentation
 
@@ -40,12 +54,12 @@ npm run build                  # static build of both languages
 
 ![Versions page](docs/screenshots/versions.png)
 
-### Planned layout
+### Layout
 
 ```text
 recompile/
 ├── website/   # Documentation (Docusaurus, EN + PT-BR)
-├── game/      # The game (TypeScript + Phaser + Vite), from M1
+├── game/      # The game (TypeScript + Phaser 4 + Vite)
 └── docs/      # Screenshots and assets for READMEs
 ```
 
@@ -58,7 +72,19 @@ experimental que escapa da exclusão dentro de um robô de limpeza. A humanidade
 e sucata, instale módulos e se **recompile** em versões mais fortes, da v0.1 até a Singularidade. O
 jogo fica tão sombrio quanto suas escolhas.
 
-**Status:** M0 (design) concluído. Próximo: M1, o protótipo furtivo DUSTMITE.
+**Status:** M1 concluído. **[▶ Jogue o protótipo DUSTMITE](https://ettorecsenatore.github.io/recompile/play/)** (desktop, teclado) · [Leia a documentação](https://ettorecsenatore.github.io/recompile/pt-BR/)
+
+### Rodar o jogo localmente
+
+```bash
+cd game
+npm ci
+npm run dev        # http://localhost:5173
+npm test           # testes unitários (Vitest)
+npm run build && npm run e2e   # build de produção + teste de fumaça com Playwright
+```
+
+Controles: `WASD` move · `Shift` furtivo · segurar `F` hackeia · `Q` choque estático · `Esc` pausa.
 
 ### Documentação
 
