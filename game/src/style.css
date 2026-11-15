@@ -130,6 +130,49 @@ body::after {
   color: var(--green);
 }
 
+#siege {
+  position: absolute;
+  top: 84px;
+  right: 12px;
+  background: var(--panel);
+  border: 1px solid var(--amber);
+  padding: 6px 12px;
+  display: grid;
+  gap: 4px;
+  min-width: 320px;
+}
+
+#siege[hidden] {
+  display: none;
+}
+
+#siege .row {
+  display: grid;
+  grid-template-columns: 90px 1fr 48px;
+  align-items: center;
+  gap: 8px;
+}
+
+#siege .bar {
+  height: 8px;
+  border: 1px solid var(--green-dim);
+  background: #0b140e;
+}
+
+#siege-progress {
+  height: 100%;
+  background: var(--green);
+}
+
+#siege-hp {
+  height: 100%;
+  background: var(--amber);
+}
+
+#attack[hidden] {
+  display: none;
+}
+
 #prompt {
   position: absolute;
   left: 50%;
@@ -297,6 +340,12 @@ body::after {
   #top-right {
     top: auto;
     bottom: 110px;
+  }
+  #siege {
+    top: auto;
+    bottom: 180px;
+    min-width: 0;
+    left: 12px;
   }
   #power .bar {
     width: 110px;

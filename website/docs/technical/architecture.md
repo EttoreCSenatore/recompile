@@ -11,7 +11,7 @@ title: Architecture
 |---|---|---|
 | Language | **TypeScript** (strict) | Safety on a growing codebase |
 | Engine | **Phaser** | Mature 2D web engine: rendering, input, audio, tilemaps, cameras |
-| Entities | **bitECS** (lightweight ECS) | Many entities (swarms, crowds) with good performance |
+| Entities | Plain TypeScript entities + **systems** (`game/src/sim/systems/`) | Simple and fully testable; an ECS such as bitECS will be benchmarked for the v3 swarm in M5 |
 | Bundler | **Vite** | Fast dev server, simple static builds |
 | Content validation | **Zod** | Modules, enemies, bugs and dilemmas defined as data and validated at load time |
 | Unit tests | **Vitest** | Game logic is pure and testable |

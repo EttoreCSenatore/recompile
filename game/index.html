@@ -19,6 +19,10 @@
         <div id="threat"><span class="label">THREAT</span> <span id="threat-bar"></span></div>
         <div id="objective"></div>
       </div>
+      <div id="siege" hidden>
+        <div class="row"><span class="label">COMPILE</span><div class="bar"><div id="siege-progress"></div></div><span id="siege-pct"></span></div>
+        <div class="row"><span class="label">FABRICATOR</span><div class="bar hp"><div id="siege-hp"></div></div><span id="siege-hp-text"></span></div>
+      </div>
       <div id="prompt"></div>
       <div id="bottom">
         <div id="power">
@@ -26,9 +30,10 @@
           <div class="bar"><div id="power-fill"></div></div>
           <span id="power-text"></span>
         </div>
-        <div id="ability">[Q] STATIC SHOCK 8ϟ <span id="stun-cd"></span></div>
-        <div id="resources">◇ DAT <span id="data">0</span></div>
-        <div id="version">v0.1 DUSTMITE · seed <span id="seed"></span></div>
+        <div id="attack" hidden></div>
+        <div id="ability"><span id="ability-text"></span> <span id="stun-cd"></span></div>
+        <div id="resources">◇ DAT <span id="data">0</span> &nbsp;▣ SCR <span id="scrap">0</span></div>
+        <div id="version"><span id="version-label"></span> · seed <span id="seed"></span></div>
       </div>
     </div>
 

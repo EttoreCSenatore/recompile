@@ -56,17 +56,18 @@ A Compilação é o clímax de cada ato: um **cerco em uma fabricadora**.
 
 1. Você chega à fabricadora com **Dados e Sucata** suficientes (o custo cresce a cada ato).
 2. Você escolhe quais módulos **portar** (veja [Módulos](./modules.md#portar-módulos-entre-versões)).
-3. A fabricadora começa a construir. Uma barra de progresso enche em **90–120 s** (*ajuste*).
+3. A fabricadora começa a construir. Uma barra de progresso enche em **45–120 s**, mais longa a cada ato (*ajuste*).
 4. Humanos chegam em ondas. Você defende a fabricadora **com o corpo antigo**.
-5. Se a fabricadora for destruída, a Compilação falha e você precisa fugir para um local reserva
-   (mais difícil, custa metade dos seus Dados). Se você morrer, a run acaba.
+5. Se a fabricadora for destruída, a Compilação falha: ela reinicia em alguns segundos e você pode
+   tentar de novo. Dados e Sucata **só são gastos no sucesso**, mas os atacantes continuam lá,
+   agora caçando você. Se você morrer, a run acaba.
 6. Em 100%, o corpo antigo desaba e o ECHO **inicializa no novo** com a barra de Energia cheia. Os
    atacantes que sobraram enfrentam a nova versão na hora, um momento proposital de fantasia de
    poder.
 
 | Ato | Custo em Dados | Custo em Sucata | Duração do cerco (ajuste) |
 |---|---|---|---|
-| 0 → v1 | 40 | 30 | 60 s |
+| 0 → v1 | 40 | 30 | 45 s |
 | 1 → v2 | 120 | 100 | 90 s |
 | 2 → v3 | 250 | 220 | 100 s |
 | 3 → v4 | 450 | 380 | 110 s |
