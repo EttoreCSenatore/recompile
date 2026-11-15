@@ -10,7 +10,7 @@ title: Arquitetura
 | Camada | Escolha | Por quê |
 |---|---|---|
 | Linguagem | **TypeScript** (strict) | Segurança num código que vai crescer |
-| Engine | **Phaser** | Engine 2D web madura: renderização, input, áudio, tilemaps, câmeras |
+| Engine | **Phaser** (2D hoje); um **renderizador 3D** com câmera inclinada está planejado para o M2.4 | O Phaser cuida de renderização, input, áudio e câmeras por enquanto. A simulação nunca importa o renderizador, então a visão pode mudar sem mexer nas regras |
 | Entidades | Entidades em TypeScript simples + **sistemas** (`game/src/sim/systems/`) | Simples e totalmente testável; um ECS como o bitECS será avaliado para o enxame da v3 no M5 |
 | Bundler | **Vite** | Servidor de dev rápido, builds estáticas simples |
 | Validação de conteúdo | **Zod** | Módulos, inimigos, bugs e dilemas definidos como dados e validados no carregamento |
@@ -90,6 +90,7 @@ flowchart TB
 | **Hacking** | Interações canalizadas com dispositivos, interrompíveis |
 | **Diretor** | Nível de Ameaça, orçamento de spawn, contramedidas adaptativas |
 | **Alinhamento** | Escuta eventos, atualiza o medidor, dispara mudanças de nível |
+| **Módulos** | Slots, raridade, tags e bônus de conjunto viram um `Build` (`sim/modules.ts`); Bancada, caches, rerolls e portar em `sim/systems/loadout.ts`. Os sistemas leem `player.build` em vez de valores fixos |
 | **Possessão (v4)** | Transfere o controle do jogador entre entidades |
 
 ## Metas de desempenho

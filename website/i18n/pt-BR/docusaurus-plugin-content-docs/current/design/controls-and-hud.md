@@ -14,7 +14,8 @@ title: Controles, HUD e Acessibilidade
 | Ataque primário | Clique esquerdo | `RT` |
 | Ataque secundário | Clique direito | `LT` |
 | Dash | `Espaço` | `A` |
-| Habilidades 1–3 | `Q` `E` `R` | `X` `Y` `B` |
+| Habilidades 1–2 | `Q` `R` | `X` `B` |
+| Módulos / Bancada | `E` | `Y` |
 | Interagir / hackear | `F` (segurar) | `RB` (segurar) |
 | Escanear | `C` (segurar) | `LB` (segurar) |
 | Modo furtivo (lento, silencioso) | `Shift` (segurar) | Clique do analógico esquerdo |

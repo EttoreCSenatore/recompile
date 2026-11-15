@@ -10,7 +10,7 @@ title: Architecture
 | Layer | Choice | Why |
 |---|---|---|
 | Language | **TypeScript** (strict) | Safety on a growing codebase |
-| Engine | **Phaser** | Mature 2D web engine: rendering, input, audio, tilemaps, cameras |
+| Engine | **Phaser** (2D today); a **3D renderer** with an angled camera is planned for M2.4 | Phaser gives rendering, input, audio and cameras now. The simulation never imports the renderer, so the view can change without touching game rules |
 | Entities | Plain TypeScript entities + **systems** (`game/src/sim/systems/`) | Simple and fully testable; an ECS such as bitECS will be benchmarked for the v3 swarm in M5 |
 | Bundler | **Vite** | Fast dev server, simple static builds |
 | Content validation | **Zod** | Modules, enemies, bugs and dilemmas defined as data and validated at load time |
@@ -89,6 +89,7 @@ flowchart TB
 | **Hacking** | Channelled interactions with devices, interruptible |
 | **Director** | Threat level, spawn budget, adaptive countermeasures |
 | **Alignment** | Listens to events, updates the meter, triggers tier changes |
+| **Modules** | Slots, rarity, tags and set bonuses computed into a `Build` (`sim/modules.ts`); Workbench, caches, rerolls and porting in `sim/systems/loadout.ts`. Systems read `player.build` instead of hard-coding stats |
 | **Possession (v4)** | Transfers player control between entities |
 
 ## Performance targets
