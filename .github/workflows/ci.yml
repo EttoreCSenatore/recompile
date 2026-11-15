@@ -39,10 +39,41 @@ jobs:
           path: website/build
           retention-days: 1
 
+  game:
+    name: Game (typecheck, lint, tests, build, e2e)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: game
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: game/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm audit --audit-level=high
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+        env:
+          CI: 'true'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: game-build
+          path: game/dist
+          retention-days: 1
+
   deploy:
     name: Deploy to GitHub Pages
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: [docs]
+    needs: [docs, game]
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -55,6 +86,10 @@ jobs:
         with:
           name: docs-build
           path: site
+      - uses: actions/download-artifact@v4
+        with:
+          name: game-build
+          path: site/play
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

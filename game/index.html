@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="RECOMPILE prototype: escape the Halvorsen lab as DUSTMITE, a cleaning robot with a hunted AI inside." />
+    <title>RECOMPILE · DUSTMITE prototype</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="stylesheet" href="/src/style.css" />
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <div id="game"></div>
+
+    <div id="hud" hidden>
+      <div id="log" role="log" aria-live="polite"></div>
+      <div id="top-right">
+        <div id="threat"><span class="label">THREAT</span> <span id="threat-bar"></span></div>
+        <div id="objective"></div>
+      </div>
+      <div id="prompt"></div>
+      <div id="bottom">
+        <div id="power">
+          <span class="label">PWR</span>
+          <div class="bar"><div id="power-fill"></div></div>
+          <span id="power-text"></span>
+        </div>
+        <div id="ability">[Q] STATIC SHOCK 8ϟ <span id="stun-cd"></span></div>
+        <div id="resources">◇ DAT <span id="data">0</span></div>
+        <div id="version">v0.1 DUSTMITE · seed <span id="seed"></span></div>
+      </div>
+    </div>
+
+    <div id="overlay" role="dialog" aria-modal="true"></div>
+
+    <noscript>RECOMPILE needs JavaScript to run.</noscript>
+  </body>
+</html>

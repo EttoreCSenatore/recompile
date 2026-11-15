@@ -7,6 +7,10 @@ updates:
     groups:
       docusaurus:
         patterns: ["@docusaurus/*"]
+  - package-ecosystem: npm
+    directory: /game
+    schedule:
+      interval: weekly
   - package-ecosystem: github-actions
     directory: /
     schedule:
