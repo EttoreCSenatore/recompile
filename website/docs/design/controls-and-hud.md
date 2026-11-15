@@ -14,7 +14,8 @@ title: Controls, HUD & Accessibility
 | Primary attack | Left click | `RT` |
 | Secondary attack | Right click | `LT` |
 | Dash | `Space` | `A` |
-| Abilities 1–3 | `Q` `E` `R` | `X` `Y` `B` |
+| Abilities 1–2 | `Q` `R` | `X` `B` |
+| Modules / Workbench | `E` | `Y` |
 | Interact / hack | `F` (hold) | `RB` (hold) |
 | Scan | `C` (hold) | `LB` (hold) |
 | Stealth mode (slow, silent) | `Shift` (hold) | Left stick click |
@@ -37,7 +38,7 @@ The HUD looks like a **terminal overlay** projected by ECHO's own sensors.
 │                                                              │
 │                                                              │
 │ PWR ▮▮▮▮▮▮▮▮▯▯▯▯ 64/80          ◇ DAT 112   ▣ SCR 47          │
-│ [Q] POUNCE 12ϟ  [E] SCAN  [R] --        v1.2 SCRAPPER         │
+│ [Q] POUNCE 12ϟ  [E] MODULES · bag 2     v1.2 SCRAPPER         │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -46,6 +47,9 @@ The HUD looks like a **terminal overlay** projected by ECHO's own sensors.
 - **Threat meter** (top right): 5 segments.
 - **Power bar** (bottom left): segmented, flashes when low.
 - **Resources** and **version tag** (bottom right).
+- **Module chips** (bottom): one per slot, coloured by rarity. `E` opens the Workbench near a bench, or the
+  field loadout elsewhere (installs cost double Scrap). Menus work with mouse, keyboard (`↑↓`, `Enter`, `X`
+  to dismantle) and gamepad (D-pad, `A`, `X`, `B`).
 - **UI colour** shifts with the Alignment tier.
 
 ## Accessibility
