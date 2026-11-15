@@ -1,0 +1,18 @@
+{
+  "version.label": {
+    "message": "Próxima",
+    "description": "The label for version current"
+  },
+  "sidebar.docsSidebar.category.Game Design": {
+    "message": "Game Design",
+    "description": "The label for category 'Game Design' in sidebar 'docsSidebar'"
+  },
+  "sidebar.docsSidebar.category.World": {
+    "message": "Mundo",
+    "description": "The label for category 'World' in sidebar 'docsSidebar'"
+  },
+  "sidebar.docsSidebar.category.Technical": {
+    "message": "Técnico",
+    "description": "The label for category 'Technical' in sidebar 'docsSidebar'"
+  }
+}

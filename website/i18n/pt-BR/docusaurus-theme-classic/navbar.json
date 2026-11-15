@@ -1,0 +1,22 @@
+{
+  "title": {
+    "message": "RECOMPILE",
+    "description": "The title in the navbar"
+  },
+  "logo.alt": {
+    "message": "Logo do RECOMPILE",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.Docs": {
+    "message": "Documentação",
+    "description": "Navbar item with label Docs"
+  },
+  "item.label.Roadmap": {
+    "message": "Roadmap",
+    "description": "Navbar item with label Roadmap"
+  },
+  "item.label.GitHub": {
+    "message": "GitHub",
+    "description": "Navbar item with label GitHub"
+  }
+}

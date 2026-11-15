@@ -1,0 +1,79 @@
+.hero {
+  padding: 4rem 0 3rem;
+  text-align: center;
+  background:
+    repeating-linear-gradient(0deg, rgba(57, 255, 106, 0.04) 0 1px, transparent 1px 3px),
+    var(--rc-bg-deep);
+  border-bottom: 1px solid var(--ifm-color-primary-darkest);
+}
+
+.boot {
+  display: inline-block;
+  text-align: left;
+  margin: 0 auto 2rem;
+  max-width: 100%;
+  overflow-x: auto;
+  background: transparent;
+  color: var(--ifm-color-primary);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  border: none;
+  box-shadow: none;
+}
+
+.cursor {
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.title {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: clamp(2.5rem, 9vw, 5rem);
+  letter-spacing: 0.3em;
+  color: var(--ifm-color-primary);
+  text-shadow: 0 0 12px rgba(57, 255, 106, 0.45);
+  margin-bottom: 0.5rem;
+}
+
+.tagline {
+  font-size: 1.2rem;
+  opacity: 0.85;
+}
+
+.buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+  padding: 3rem 0;
+}
+
+.card {
+  border: 1px solid var(--ifm-color-primary-darkest);
+  border-radius: 6px;
+  padding: 1.25rem;
+  background: var(--rc-bg-card);
+}
+
+.card h3 {
+  font-family: var(--ifm-font-family-monospace);
+  color: var(--ifm-color-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor {
+    animation: none;
+  }
+}

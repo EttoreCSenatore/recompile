@@ -1,0 +1,54 @@
+/* RECOMPILE theme: terminal phosphor green with red accents. */
+
+:root {
+  --ifm-color-primary: #0f8a3a;
+  --ifm-color-primary-dark: #0e7c34;
+  --ifm-color-primary-darker: #0d7531;
+  --ifm-color-primary-darkest: #0a6028;
+  --ifm-color-primary-light: #109840;
+  --ifm-color-primary-lighter: #119f43;
+  --ifm-color-primary-lightest: #13b44c;
+  --ifm-code-font-size: 95%;
+  --ifm-font-family-monospace: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --rc-bg-deep: #eef5ef;
+  --rc-bg-card: #f7fbf7;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #39ff6a;
+  --ifm-color-primary-dark: #1fff55;
+  --ifm-color-primary-darker: #12ff4b;
+  --ifm-color-primary-darkest: #00e036;
+  --ifm-color-primary-light: #53ff7f;
+  --ifm-color-primary-lighter: #60ff89;
+  --ifm-color-primary-lightest: #88ffa7;
+  --ifm-background-color: #070b08;
+  --ifm-background-surface-color: #0b120c;
+  --ifm-navbar-background-color: #0b120c;
+  --ifm-footer-background-color: #050806;
+  --ifm-font-color-base: #cfe8d4;
+  --docusaurus-highlighted-code-line-bg: rgba(57, 255, 106, 0.12);
+  --rc-bg-deep: #050806;
+  --rc-bg-card: #0b120c;
+}
+
+[data-theme='dark'] .button--primary {
+  color: #051008;
+}
+
+h1,
+h2,
+.navbar__title {
+  font-family: var(--ifm-font-family-monospace);
+  letter-spacing: 0.02em;
+}
+
+.navbar__title {
+  letter-spacing: 0.2em;
+}
+
+[data-theme='dark'] .markdown h1 {
+  color: var(--ifm-color-primary);
+  text-shadow: 0 0 8px rgba(57, 255, 106, 0.3);
+}
