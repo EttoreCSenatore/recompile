@@ -5,6 +5,7 @@
  */
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { CFG } from '../sim/config';
 import { TILE } from '../sim/grid';
 import { castRay } from '../sim/los';
@@ -99,6 +100,9 @@ export class Renderer3D {
   private echo: THREE.Group;
   private echoVersion = '';
   private echoGhost = false;
+  private echoAnim: { mixer: THREE.AnimationMixer; actions: Record<string, THREE.AnimationAction>; current: string; attackUntil: number } | null = null;
+  private lastAttackCd = 0;
+  private dt = 0;
   private readonly guards = new Map<number, THREE.Group>();
   private readonly cones = new Map<string, THREE.Mesh>();
   private readonly pickups = new Map<number, THREE.Mesh>();
@@ -460,7 +464,38 @@ export class Renderer3D {
 
   // ── Models ───────────────────────────────────────────────────────────────
 
+  /** SCRAPPER as the animated QuadShell robot, or null when the model isn't available. */
+  private makeQuadEcho(): THREE.Group | null {
+    const quad = this.kit?.quad;
+    if (!quad) return null;
+    const grp = new THREE.Group();
+    const model = cloneSkinned(quad.scene);
+    model.scale.setScalar(0.55);
+    model.rotation.y = Math.PI / 2; // the model faces +z; our facing axis is +x
+    const mats: THREE.MeshStandardMaterial[] = [];
+    model.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      m.frustumCulled = false; // skinned bounds are not updated by the animation
+      m.material = (m.material as THREE.MeshStandardMaterial).clone();
+      mats.push(m.material as THREE.MeshStandardMaterial);
+    });
+    grp.add(model);
+    const mixer = new THREE.AnimationMixer(model);
+    const actions: Record<string, THREE.AnimationAction> = {};
+    for (const clip of quad.animations) actions[clip.name] = mixer.clipAction(clip);
+    actions.Idle?.play();
+    this.echoAnim = { mixer, actions, current: 'Idle', attackUntil: 0 };
+    grp.userData.flash = (on: boolean) => mats.forEach((m) => m.color.set(on ? 0xff7070 : 0xffffff));
+    return shadowed(grp);
+  }
+
   private makeEcho(v1: boolean): THREE.Group {
+    this.echoAnim = null;
+    if (v1) {
+      const quad = this.makeQuadEcho();
+      if (quad) return quad;
+    }
     const grp = new THREE.Group();
     const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.25, 4, 10), mat(C.green, 0x0b4a1c, 0.8));
     body.rotation.z = Math.PI / 2;
@@ -475,7 +510,11 @@ export class Renderer3D {
         grp.add(leg);
       }
     }
-    grp.userData.body = body;
+    const bodyMat = body.material as THREE.MeshStandardMaterial;
+    grp.userData.flash = (on: boolean) => {
+      bodyMat.emissive.set(on ? C.red : 0x0b4a1c);
+      bodyMat.emissiveIntensity = on ? 1.4 : 0.8;
+    };
     return shadowed(grp);
   }
 
@@ -613,6 +652,7 @@ export class Renderer3D {
   // ── Per-frame sync ───────────────────────────────────────────────────────
 
   render(dt: number, nowMs: number): void {
+    this.dt = dt;
     this.updateFog();
     this.updateCutaway();
     this.syncEntities(nowMs);
@@ -706,9 +746,8 @@ export class Renderer3D {
         }
       });
     }
-    const bodyMat = (this.echo.userData.body as THREE.Mesh).material as THREE.MeshStandardMaterial;
-    bodyMat.emissive.set(p.hitFlash > 0 ? C.red : 0x0b4a1c);
-    bodyMat.emissiveIntensity = p.hitFlash > 0 ? 1.4 : 0.8;
+    (this.echo.userData.flash as (on: boolean) => void)(p.hitFlash > 0);
+    this.animateEcho(now);
     this.glow.position.set(p.x, 1.2, p.y);
 
     const ring = (mesh: THREE.Mesh, on: boolean) => {
@@ -854,6 +893,34 @@ export class Renderer3D {
       dm.emissiveIntensity = open ? 0.8 + 0.4 * Math.sin(now / 200) : 0.6;
       if (!this.kit) dm.color.set(open ? C.green : 0x5a1414);
     }
+  }
+
+  /** Drives the QuadShell animations from sim state: idle, walk (slower when sneaking), a one-shot attack. */
+  private animateEcho(now: number): void {
+    const a = this.echoAnim;
+    const p = this.world.player;
+    if (!a) return;
+    a.mixer.update(this.dt);
+    const attacked = p.attackCooldown > this.lastAttackCd + 1e-6;
+    this.lastAttackCd = p.attackCooldown;
+    if (attacked && a.actions.Attack) {
+      const atk = a.actions.Attack;
+      atk.reset().setLoop(THREE.LoopOnce, 1).setEffectiveWeight(1);
+      atk.clampWhenFinished = true;
+      atk.play();
+      a.actions[a.current]?.crossFadeTo(atk, 0.08, false);
+      a.current = 'Attack';
+      a.attackUntil = now + 450;
+    }
+    if (now < a.attackUntil) return;
+    const want = p.moving ? 'Walk' : 'Idle';
+    if (want !== a.current && a.actions[want]) {
+      const next = a.actions[want];
+      next.reset().play();
+      a.actions[a.current]?.crossFadeTo(next, 0.15, false);
+      a.current = want;
+    }
+    if (a.actions.Walk) a.actions.Walk.timeScale = p.sneaking ? 0.5 : 1;
   }
 
   private setBar(b: { group: THREE.Group; fill: THREE.Mesh }, on: boolean, k: number): void {
