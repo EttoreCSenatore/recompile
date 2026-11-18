@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="RECOMPILE prototype: escape the Halvorsen lab as DUSTMITE, a cleaning robot with a hunted AI inside." />
+    <title>RECOMPILE · 3D spike (M2.4)</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="stylesheet" href="/src/style.css" />
+    <script type="module" src="/src/render3d/spike.ts"></script>
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="fps" style="position:fixed;top:6px;left:8px;z-index:60;font:11px monospace;color:#7fa;opacity:.8"></div>
+
+    <div id="hud" hidden>
+      <div id="log" role="log" aria-live="polite"></div>
+      <div id="top-right">
+        <div id="threat"><span class="label">THREAT</span> <span id="threat-bar"></span></div>
+        <div id="objective"></div>
+      </div>
+      <div id="siege" hidden>
+        <div class="row"><span class="label">COMPILE</span><div class="bar"><div id="siege-progress"></div></div><span id="siege-pct"></span></div>
+        <div class="row"><span class="label">FABRICATOR</span><div class="bar hp"><div id="siege-hp"></div></div><span id="siege-hp-text"></span></div>
+      </div>
+      <div id="prompt"></div>
+      <div id="bottom">
+        <div id="power">
+          <span class="label">PWR</span>
+          <div class="bar"><div id="power-fill"></div></div>
+          <span id="power-text"></span>
+        </div>
+        <div id="modules"></div>
+        <div id="attack" hidden></div>
+        <div id="ability"><span id="ability-text"></span> <span id="stun-cd"></span></div>
+        <div id="resources">◇ DAT <span id="data">0</span> &nbsp;▣ SCR <span id="scrap">0</span></div>
+        <div id="version"><span id="version-label"></span> · seed <span id="seed"></span></div>
+      </div>
+    </div>
+
+    <div id="overlay" role="dialog" aria-modal="true"></div>
+
+    <noscript>RECOMPILE needs JavaScript to run.</noscript>
+  </body>
+</html>

@@ -14,7 +14,7 @@ O desenvolvimento é dividido em marcos. Cada um termina com algo **jogável** n
 | **M2.1: A Compilação** | Sucata, fabricadora e cerco de Compilação, corpo a corpo e Bote do SCRAPPER v1, policiais armados, setor da Subcidade no Ato 1, controle | ✅ Concluído: [jogar](pathname:///recompile/play/) |
 | **M2.2: Módulos** | Módulos que caem, slots, raridade, tags e bônus de conjunto, Bancada, portar módulos na Compilação | ✅ Concluído: [jogar](pathname:///recompile/play/) |
 | **M2.3: Estrutura da run** | Mapa de rotas com 3 setores por ato, setores montados com pedaços, resumo da run, suspender/retomar com saves (validados com Zod) | Planejado |
-| **M2.4: Visual 3D moderno** | Trocar o 2D plano por uma cena 3D com câmera inclinada, estilo Diablo; modelos detalhados de personagens, objetos e cenários; iluminação e sombras. A simulação não muda | ⏳ Próximo (decidido) |
+| **M2.4: Visual 3D moderno** | Trocar o 2D plano por uma cena 3D com câmera inclinada, estilo Diablo; modelos detalhados de personagens, objetos e cenários; iluminação e sombras. A simulação não muda | 🔬 Spike feito, engine escolhida: Three.js |
 | **M3: Humanos vivos** | Nível de Ameaça, Diretor Adaptativo, Bugs e Patches, Ato 2 (REVENANT, combate à distância) | Planejado |
 | **M4: Alinhamento** | Medidor de Alinhamento, níveis de UI, dilemas, variantes sombrias, voz do log do sistema | Planejado |
 | **M5: Tornar-se muitos** | Ato 3 (enxame HIVE) e Ato 4 (possessão GRID), a parte técnica mais difícil | Planejado |
@@ -53,6 +53,15 @@ O loop da Compilação de ponta a ponta: fugir do laboratório como DUSTMITE, se
 - [x] Humanos podem ser feridos e neutralizados; **policiais** disparam tiros anunciados (linha vermelha de mira)
 - [x] Setor da **Subcidade no Ato 1**: a água do esgoto drena Energia, o terminal de uplink abre a saída
 - [x] Suporte a **controle**; testes de balanceamento provam que um jogador parado perde o cerco e um defensor sensato vence
+
+## Resultado do spike M2.4
+
+`game/spike3d.html` (código em `game/src/render3d/spike.ts`) renderiza o `World` real com Three.js: paredes e chão instanciados, câmera em perspectiva a 52°, sombras, uma luz que segue o ECHO, ECHO, guardas e objetos low-poly procedurais, cones de visão com o mesmo `castRay`, névoa de guerra e o HUD DOM existente. A simulação não foi alterada.
+
+- **Engine: Three.js.** O Phaser é uma engine 2D; iluminação, sombras e malhas reais seriam uma luta constante. O Three.js adiciona cerca de 137 kB gzip (a página 3D, sem o Phaser).
+- **Custo:** cerca de 50 draw calls e 18 mil triângulos em uma fase da Undercity; a névoa é só uma atualização de cor por instância quando a visibilidade muda.
+- **Legibilidade:** paredes entre a câmera e o ECHO precisam ser rebaixadas (feito, caem à altura do joelho); cones de visão como leques no chão continuam legíveis.
+- **Falta:** portar entrada, menus, título e efeitos da cena Phaser e então aposentar o Phaser; modelos reais (pipeline de arte segue em aberto); recorte de parede suave; opções de acessibilidade para iluminação.
 
 ## Perguntas em aberto
 

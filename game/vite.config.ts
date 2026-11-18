@@ -35,6 +35,7 @@ export default defineConfig({
     target: 'es2022',
     chunkSizeWarningLimit: 2000,
     rollupOptions: {
+      input: { main: 'index.html', spike3d: 'spike3d.html' },
       output: { manualChunks: (id) => (id.includes('node_modules/phaser') ? 'phaser' : undefined) },
     },
   },
