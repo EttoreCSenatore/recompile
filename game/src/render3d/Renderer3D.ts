@@ -20,6 +20,30 @@ const CAM_DIST = 15;
 /** The MegaKit's modules are 4 units wide; our tiles are 1. */
 const KIT_S = 0.25;
 const WALL_PANELS: PieceName[] = ['WallBand_Straight', 'WallAstra_Straight'];
+interface Theme {
+  floorTint: number;
+  coreColor: number;
+  /** Decor pieces and the height (world units) each is scaled to; picked per candidate tile. */
+  decor: [PieceName, number][];
+  /** Share of eligible wall-side tiles that get a prop. */
+  density: number;
+}
+
+const THEMES: Record<'lab' | 'undercity', Theme> = {
+  lab: {
+    floorTint: 0x4d6a5b,
+    coreColor: 0x6f8579,
+    decor: [['Prop_Crate', 0.5], ['Prop_Crate3', 0.5], ['Prop_Locker', 1.25], ['Prop_Shelves_WideShort', 0.8], ['Prop_Ammo_Closed', 0.3], ['Prop_Barrel2_Closed', 0.6], ['Column_Pipes', 1.4]],
+    density: 0.4,
+  },
+  undercity: {
+    floorTint: 0x3f4f4a,
+    coreColor: 0x56645c,
+    decor: [['Prop_Barrel_Large', 0.75], ['Prop_Barrel2_Closed', 0.6], ['Prop_Crate_Tarp', 0.55], ['Prop_Crate', 0.5], ['Column_Pipes', 1.4], ['Column_Pipes', 1.1]],
+    density: 0.4,
+  },
+};
+
 const FLOOR_PIECES: PieceName[] = ['Platform_Simple']; // the kit's DarkPlates and Squares floors render near-black under our lighting
 const REDUCED_MOTION = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
@@ -91,6 +115,7 @@ export class Renderer3D {
   private exitDoor!: THREE.Object3D;
   private exitMats: THREE.MeshStandardMaterial[] = [];
   private kit: Kit | null = null;
+  private theme: Theme = THEMES.lab;
   /** Kit instanced meshes that take the fog colour; `tiles[n]` is the grid tile whose visibility instance n follows. */
   private fogParts: { mesh: THREE.InstancedMesh; tiles: number[] }[] = [];
   private panelSets: { piece: PieceName; defs: { wall: number; face: number; fogTile: number }[]; meshes: THREE.InstancedMesh[] }[] = [];
@@ -216,6 +241,7 @@ export class Renderer3D {
       if (o instanceof THREE.InstancedMesh) o.dispose();
     });
     this.mapGroup = new THREE.Group();
+    this.theme = THEMES[w.level.id];
     const g = w.grid;
     this.floorIds = [];
     this.wallIds = [];
@@ -310,7 +336,7 @@ export class Renderer3D {
     for (const [piece, set] of byPiece) {
       for (const mesh of kit.instance(piece, set.at)) {
         // The kit's floors are pale; tint them toward the lab's dim green so they don't blow out under ECHO's light.
-        if (piece !== 'Prop_Vent_Small') (mesh.material as THREE.MeshStandardMaterial).color.set(0x4d6a5b);
+        if (piece !== 'Prop_Vent_Small') (mesh.material as THREE.MeshStandardMaterial).color.set(this.theme.floorTint);
         this.mapGroup.add(mesh);
         this.fogParts.push({ mesh, tiles: set.tiles });
       }
@@ -341,7 +367,7 @@ export class Renderer3D {
     }
     this.placePanels((n) => this.wallH[n] ?? WALL_H);
     // The box core is a dark filler behind the panels.
-    this.wallMesh.material = new THREE.MeshStandardMaterial({ color: 0x6f8579, roughness: 0.8, metalness: 0.2 });
+    this.wallMesh.material = new THREE.MeshStandardMaterial({ color: this.theme.coreColor, roughness: 0.8, metalness: 0.2 });
   }
 
   /** Positions the wall panels; `heightOf(wallIndex)` lets the cutaway lower them. */
@@ -370,6 +396,65 @@ export class Renderer3D {
     }
   }
 
+  /**
+   * Visual-only clutter against walls so the map reads as a place. It never changes gameplay, so it stays
+   * clear of every gameplay object and only goes on tiles with a single wall side (never in 1-wide corridors).
+   */
+  private placeDecor(add: (o: THREE.Object3D, tile: { x: number; y: number }, data: Record<string, unknown>) => void): void {
+    const kit = this.kit!;
+    const w = this.world;
+    const g = w.grid;
+    const keepClear = new Set<number>();
+    const mark = (x: number, y: number, r = 1) => {
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) keepClear.add(g.index(Math.floor(x) + dx, Math.floor(y) + dy));
+    };
+    mark(w.player.x, w.player.y, 2);
+    mark(w.level.exit.x, w.level.exit.y, 1);
+    for (const t of w.terminals) mark(t.x, t.y);
+    for (const o of w.outlets) mark(o.x, o.y);
+    for (const s of w.scrapPiles) mark(s.x, s.y);
+    for (const c of w.caches) mark(c.x, c.y);
+    for (const c of w.cameras) mark(c.x, c.y);
+    if (w.workbench) mark(w.workbench.x, w.workbench.y);
+    if (w.fabricator) {
+      mark(w.fabricator.x, w.fabricator.y, 3);
+      for (const sp of w.fabricator.spawnPoints) mark(sp.x, sp.y);
+    }
+    for (const gd of w.guards) {
+      mark(gd.x, gd.y);
+      for (const r of gd.route) mark(r.x, r.y);
+    }
+    for (const pk of w.modulePickups) mark(pk.x, pk.y);
+
+    const hash = (x: number, y: number, k: number) => {
+      let h = (x * 374761393 + y * 668265263 + k * 2147483647 + w.seed * 1274126177) | 0;
+      h = Math.imul(h ^ (h >>> 13), 1274126177);
+      return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+    };
+    const dirs: [number, number, number][] = [[1, 0, -Math.PI / 2], [-1, 0, Math.PI / 2], [0, 1, Math.PI], [0, -1, 0]]; // wall side, yaw so the front faces away
+    for (let y = 0; y < g.height; y++) {
+      for (let x = 0; x < g.width; x++) {
+        if (g.get(x, y) !== TILE.FLOOR || keepClear.has(g.index(x, y))) continue;
+        const walls = dirs.filter(([dx, dy]) => g.get(x + dx, y + dy) === TILE.WALL);
+        if (walls.length !== 1 || hash(x, y, 1) > this.theme.density) continue;
+        // The tile across from the wall must also be open floor so the prop never narrows a passage to nothing.
+        const [dx, dy, yaw] = walls[0]!;
+        if (g.get(x - dx, y - dy) !== TILE.FLOOR || g.get(x - dx * 2, y - dy * 2) === TILE.WALL) continue;
+        const [name, height] = this.theme.decor[Math.floor(hash(x, y, 2) * this.theme.decor.length)]!;
+        const box = kit.bounds(name);
+        const sz = box.getSize(new THREE.Vector3());
+        const s = height / sz.y;
+        if (Math.max(sz.x, sz.z) * s > 0.95) continue;
+        const obj = kit.clone(name);
+        obj.scale.setScalar(s);
+        obj.rotation.y = yaw + (hash(x, y, 3) - 0.5) * 0.25;
+        const shift = 0.46 + box.min.z * s; // back of the piece against the wall face
+        obj.position.set(x + 0.5 + dx * shift, 0, y + 0.5 + dy * shift);
+        add(obj, { x, y }, {});
+      }
+    }
+  }
+
   private buildProps(): void {
     const w = this.world;
     for (const o of this.props) this.scene.remove(o);
@@ -380,6 +465,7 @@ export class Renderer3D {
       this.scene.add(o);
       this.props.push(o);
     };
+    if (this.kit) this.placeDecor(add);
     for (const t of w.terminals) {
       if (this.kit) {
         const comp = this.kit.clone('Prop_Computer');
@@ -490,32 +576,61 @@ export class Renderer3D {
     return shadowed(grp);
   }
 
+  /** DUSTMITE: a hand-built low-poly cleaning robot (disc body, bumper, lidar dome, side brushes, one red eye). */
+  private makeDustmite(): THREE.Group {
+    const grp = new THREE.Group();
+    const shell = mat(0x3d5648, 0x0b2a16, 0.5);
+    const accent = mat(C.green, C.green, 1.2);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.33, 0.13, 28), shell);
+    body.position.y = 0.11;
+    const top = new THREE.Mesh(new THREE.SphereGeometry(0.3, 28, 6, 0, Math.PI * 2, 0, Math.PI / 2), shell);
+    top.scale.y = 0.28;
+    top.position.y = 0.175;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.31, 0.014, 8, 40), accent);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 0.13;
+    const bumper = new THREE.Mesh(new THREE.TorusGeometry(0.335, 0.03, 8, 20, Math.PI), mat(0x1c2622));
+    bumper.rotation.x = Math.PI / 2;
+    bumper.rotation.z = -Math.PI / 2; // the arc covers the front (+x)
+    bumper.position.y = 0.09;
+    const lidar = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.06, 14), mat(0x1c2622));
+    lidar.position.set(-0.05, 0.25, 0);
+    const lidarGlow = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.01, 6, 16), accent);
+    lidarGlow.rotation.x = Math.PI / 2;
+    lidarGlow.position.set(-0.05, 0.27, 0);
+    const eyeMat = mat(0x2a0505, C.red, 2.2);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 10), eyeMat);
+    eye.position.set(0.24, 0.19, 0);
+    const brushes = new THREE.Group();
+    for (const side of [-1, 1]) {
+      const brush = new THREE.Group();
+      for (let i = 0; i < 3; i++) {
+        const bristle = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.012, 0.025), mat(0xffd447, 0xffd447, 0.4));
+        bristle.rotation.y = (i * Math.PI * 2) / 3;
+        bristle.position.set(0, 0, 0);
+        bristle.translateX(0.07);
+        brush.add(bristle);
+      }
+      brush.position.set(0.22, 0.035, side * 0.27);
+      brushes.add(brush);
+    }
+    grp.add(body, top, ring, bumper, lidar, lidarGlow, eye, brushes);
+    grp.userData.brush = brushes;
+    grp.userData.flash = (on: boolean) => {
+      shell.emissive.set(on ? C.red : 0x0b2a16);
+      shell.emissiveIntensity = on ? 1.4 : 0.5;
+    };
+    return shadowed(grp);
+  }
+
   private makeEcho(v1: boolean): THREE.Group {
     this.echoAnim = null;
     if (v1) {
       const quad = this.makeQuadEcho();
       if (quad) return quad;
     }
-    const grp = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.25, 4, 10), mat(C.green, 0x0b4a1c, 0.8));
-    body.rotation.z = Math.PI / 2;
-    body.position.y = 0.3;
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), mat(C.red, C.red, 2));
-    eye.position.set(0.3, 0.34, 0);
-    grp.add(body, eye);
-    if (v1) {
-      for (const [dx, dz] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]] as const) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 5), mat(0x2fbf55));
-        leg.position.set(dx, 0.2, dz);
-        grp.add(leg);
-      }
-    }
-    const bodyMat = body.material as THREE.MeshStandardMaterial;
-    grp.userData.flash = (on: boolean) => {
-      bodyMat.emissive.set(on ? C.red : 0x0b4a1c);
-      bodyMat.emissiveIntensity = on ? 1.4 : 0.8;
-    };
-    return shadowed(grp);
+    void v1;
+    return this.makeDustmite();
   }
 
   private makeGuard(g: Guard): THREE.Group {
@@ -899,6 +1014,8 @@ export class Renderer3D {
   private animateEcho(now: number): void {
     const a = this.echoAnim;
     const p = this.world.player;
+    const brush = this.echo.userData.brush as THREE.Group | undefined;
+    if (brush) brush.children.forEach((b, i) => (b.rotation.y = (now / 140) * (p.moving ? 3 : 1) * (i ? 1 : -1)));
     if (!a) return;
     a.mixer.update(this.dt);
     const attacked = p.attackCooldown > this.lastAttackCd + 1e-6;

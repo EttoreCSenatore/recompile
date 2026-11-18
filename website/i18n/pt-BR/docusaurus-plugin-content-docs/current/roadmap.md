@@ -63,7 +63,8 @@ O spike provou que um renderizador Three.js em `game/src/render3d/` renderiza o 
 - **Legibilidade:** paredes entre a câmera e o ECHO precisam ser rebaixadas (feito, caem à altura do joelho); cones de visão como leques no chão continuam legíveis.
 - **Feito depois do spike:** `Renderer3D` (cena) e `Game` (modos, entrada, menus, efeitos) substituem a cena do Phaser; teclado, mouse (mira por raio no chão) e controle funcionam; o Phaser acabou.
 - **Pipeline de arte decidido:** pacotes CC0 gratuitos da Quaternius para o cenário (o Modular SciFi MegaKit já entrou: pisos, painéis de parede, portas, terminais, baús, dutos) e corpos do ECHO modelados à mão. O Sci-Fi Essentials Kit também entrou: o robô animado QuadShell é o corpo SCRAPPER.
-- **Falta:** corpos do ECHO feitos à mão, guardas de um pacote de personagens, cenário da Undercity (esgoto), recorte de parede suave, opções de acessibilidade para iluminação.
+- **Cenário vestido:** bagunça puramente visual junto às paredes, com tema por fase (laboratório / Undercity), e um DUSTMITE feito à mão.
+- **Falta:** corpos feitos à mão para as versões seguintes, guardas de um pacote de personagens, recorte de parede suave, opções de acessibilidade para iluminação.
 
 ## Perguntas em aberto
 

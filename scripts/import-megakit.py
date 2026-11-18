@@ -12,7 +12,7 @@ PIECES = [
     'Platforms/Platform_Simple', 'Platforms/Door_Metal',
     'Walls/WallBand_Straight', 'Walls/WallAstra_Straight',
     'Props/Prop_Computer', 'Props/Prop_Chest', 'Props/Prop_Crate3', 'Props/Prop_ItemHolder',
-    'Props/Prop_Vent_Small',
+    'Props/Prop_Vent_Small', 'Props/Prop_Barrel_Large', 'Props/Prop_Light_Floor', 'Columns/Column_Pipes',
 ]
 MAX_SIZE = {'BaseColor': 1024, 'Emissive': 512, 'Normal': 512, 'ORM': 512}  # px, per texture kind
 
