@@ -14,7 +14,7 @@ O desenvolvimento é dividido em marcos. Cada um termina com algo **jogável** n
 | **M2.1: A Compilação** | Sucata, fabricadora e cerco de Compilação, corpo a corpo e Bote do SCRAPPER v1, policiais armados, setor da Subcidade no Ato 1, controle | ✅ Concluído: [jogar](pathname:///recompile/play/) |
 | **M2.2: Módulos** | Módulos que caem, slots, raridade, tags e bônus de conjunto, Bancada, portar módulos na Compilação | ✅ Concluído: [jogar](pathname:///recompile/play/) |
 | **M2.3: Estrutura da run** | Mapa de rotas com 3 setores por ato, setores montados com pedaços, resumo da run, suspender/retomar com saves (validados com Zod) | Planejado |
-| **M2.4: Visual 3D moderno** | Trocar o 2D plano por uma cena 3D com câmera inclinada, estilo Diablo; modelos detalhados de personagens, objetos e cenários; iluminação e sombras. A simulação não muda | 🔬 Spike feito, engine escolhida: Three.js |
+| **M2.4: Visual 3D moderno** | Trocar o 2D plano por uma cena 3D com câmera inclinada, estilo Diablo; modelos detalhados de personagens, objetos e cenários; iluminação e sombras. A simulação não muda | ✅ Renderizador portado para Three.js; Phaser removido. Modelos, iluminação e arte ainda a refinar |
 | **M3: Humanos vivos** | Nível de Ameaça, Diretor Adaptativo, Bugs e Patches, Ato 2 (REVENANT, combate à distância) | Planejado |
 | **M4: Alinhamento** | Medidor de Alinhamento, níveis de UI, dilemas, variantes sombrias, voz do log do sistema | Planejado |
 | **M5: Tornar-se muitos** | Ato 3 (enxame HIVE) e Ato 4 (possessão GRID), a parte técnica mais difícil | Planejado |
@@ -26,7 +26,7 @@ O desenvolvimento é dividido em marcos. Cada um termina com algo **jogável** n
 O primeiro protótipo responde a uma pergunta: **é divertido ser um robô fraco e caçado?**
 [Jogue no navegador](pathname:///recompile/play/) (precisa de teclado). Adicione `?seed=123` à URL para repetir uma run específica.
 
-- [x] Estrutura do projeto `game/`: Vite + TypeScript + Phaser 4, CI, lint, testes unitários, teste de fumaça com Playwright
+- [x] Estrutura do projeto `game/`: Vite + TypeScript + Phaser 4 (substituído pelo Three.js no M2.4), CI, lint, testes unitários, teste de fumaça com Playwright
 - [x] Movimento com visão de cima e passo fixo, câmera, um setor feito à mão
 - [x] Névoa de guerra do ECHO e cones de visão de guardas e câmeras (ray casting)
 - [x] Sistema de ruído e máquina de estados dos guardas (patrulha → desconfiado → investigar → alerta)
@@ -56,15 +56,16 @@ O loop da Compilação de ponta a ponta: fugir do laboratório como DUSTMITE, se
 
 ## Resultado do spike M2.4
 
-`game/spike3d.html` (código em `game/src/render3d/spike.ts`) renderiza o `World` real com Three.js: paredes e chão instanciados, câmera em perspectiva a 52°, sombras, uma luz que segue o ECHO, ECHO, guardas e objetos low-poly procedurais, cones de visão com o mesmo `castRay`, névoa de guerra e o HUD DOM existente. A simulação não foi alterada.
+O spike provou que um renderizador Three.js em `game/src/render3d/` renderiza o `World` real com Three.js: paredes e chão instanciados, câmera em perspectiva a 52°, sombras, uma luz que segue o ECHO, ECHO, guardas e objetos low-poly procedurais, cones de visão com o mesmo `castRay`, névoa de guerra e o HUD DOM existente. A simulação não foi alterada.
 
-- **Engine: Three.js.** O Phaser é uma engine 2D; iluminação, sombras e malhas reais seriam uma luta constante. O Three.js adiciona cerca de 137 kB gzip (a página 3D, sem o Phaser).
+- **Engine: Three.js.** O Phaser é uma engine 2D; iluminação, sombras e malhas reais seriam uma luta constante. O Three.js adiciona cerca de 137 kB gzip (e remover o Phaser reduziu o pacote do jogo de cerca de 357 kB para cerca de 134 kB gzip).
 - **Custo:** cerca de 50 draw calls e 18 mil triângulos em uma fase da Undercity; a névoa é só uma atualização de cor por instância quando a visibilidade muda.
 - **Legibilidade:** paredes entre a câmera e o ECHO precisam ser rebaixadas (feito, caem à altura do joelho); cones de visão como leques no chão continuam legíveis.
-- **Falta:** portar entrada, menus, título e efeitos da cena Phaser e então aposentar o Phaser; modelos reais (pipeline de arte segue em aberto); recorte de parede suave; opções de acessibilidade para iluminação.
+- **Feito depois do spike:** `Renderer3D` (cena) e `Game` (modos, entrada, menus, efeitos) substituem a cena do Phaser; teclado, mouse (mira por raio no chão) e controle funcionam; o Phaser acabou.
+- **Falta:** modelos reais (pipeline de arte segue em aberto); recorte de parede suave; opções de acessibilidade para iluminação.
 
 ## Perguntas em aberto
 
-- ~~Phaser 3 ou Phaser 4~~: decidido no M1, **Phaser 4**.
+- ~~Phaser 3 ou Phaser 4~~: decidido no M1, **Phaser 4**; superado pelo Three.js no M2.4.
 - O enxame da v3 fica legível em 480×270? Prototipar cedo no M5, ou antes como um spike.
 - O medidor de Alinhamento precisa de um número visível para ficar claro? Validar nos playtests do M4.

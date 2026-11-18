@@ -10,7 +10,7 @@ title: Arquitetura
 | Camada | Escolha | Por quê |
 |---|---|---|
 | Linguagem | **TypeScript** (strict) | Segurança num código que vai crescer |
-| Engine | **Phaser** (2D hoje); um **renderizador 3D** com câmera inclinada está planejado para o M2.4 | O Phaser cuida de renderização, input, áudio e câmeras por enquanto. A simulação nunca importa o renderizador, então a visão pode mudar sem mexer nas regras |
+| Engine | **Three.js** (3D, câmera inclinada estilo Diablo) | Iluminação, sombras e malhas reais; escolhido no spike do M2.4, que substituiu o Phaser |
 | Entidades | Entidades em TypeScript simples + **sistemas** (`game/src/sim/systems/`) | Simples e totalmente testável; um ECS como o bitECS será avaliado para o enxame da v3 no M5 |
 | Bundler | **Vite** | Servidor de dev rápido, builds estáticas simples |
 | Validação de conteúdo | **Zod** | Módulos, inimigos, bugs e dilemas definidos como dados e validados no carregamento |
@@ -22,9 +22,9 @@ title: Arquitetura
 
 ```text
 recompile/
-├── game/                    # O jogo (Vite + Phaser)
+├── game/                    # O jogo (Vite + Three.js)
 │   ├── src/
-│   │   ├── main.ts          # Boot, configuração do Phaser
+│   │   ├── main.ts          # Boot: cria o Game
 │   │   ├── scenes/          # Boot, Menu, LatentSpace, Sector, Compile, Ending
 │   │   ├── ecs/
 │   │   │   ├── components/  # Position, Velocity, Power, Vision, AIState…
@@ -45,7 +45,7 @@ recompile/
 
 ```mermaid
 flowchart TB
-  subgraph Scenes["Cenas do Phaser"]
+  subgraph Scenes["Modos do jogo"]
     Boot --> Menu --> LatentSpace --> Sector
     Sector --> Compile --> Sector
     Compile --> Ending
@@ -66,7 +66,7 @@ flowchart TB
 
 ## Princípios
 
-1. **Lógica separada da renderização.** Os sistemas operam sobre dados do ECS; o Phaser só desenha e
+1. **Lógica separada da renderização.** Os sistemas operam sobre dados do ECS; o renderizador Three.js só desenha e
    lê o input. Assim a lógica pode ser testada sem navegador.
 2. **Conteúdo orientado a dados.** Um novo módulo ou inimigo é uma entrada de dados e, no máximo, uma
    pequena função de comportamento. Designers ajustam números sem mexer nos sistemas.

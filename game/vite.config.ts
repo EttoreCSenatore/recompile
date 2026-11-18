@@ -4,7 +4,7 @@ import { defineConfig } from 'vitest/config';
 /**
  * Strict Content Security Policy, injected only into production builds
  * (the Vite dev server needs inline scripts for hot reload).
- * Phaser builds its default textures from data: URIs, hence img-src data: blob:.
+ * Three.js needs nothing beyond 'self'; img-src keeps data: blob: for generated textures.
  */
 const CSP = [
   "default-src 'self'",
@@ -35,8 +35,7 @@ export default defineConfig({
     target: 'es2022',
     chunkSizeWarningLimit: 2000,
     rollupOptions: {
-      input: { main: 'index.html', spike3d: 'spike3d.html' },
-      output: { manualChunks: (id) => (id.includes('node_modules/phaser') ? 'phaser' : undefined) },
+      output: { manualChunks: (id) => (id.includes('node_modules/three') ? 'three' : undefined) },
     },
   },
   test: {

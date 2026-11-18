@@ -10,7 +10,7 @@ title: Architecture
 | Layer | Choice | Why |
 |---|---|---|
 | Language | **TypeScript** (strict) | Safety on a growing codebase |
-| Engine | **Phaser** (2D today); a **3D renderer** with an angled camera is planned for M2.4 | Phaser gives rendering, input, audio and cameras now. The simulation never imports the renderer, so the view can change without touching game rules |
+| Engine | **Three.js** (3D, angled Diablo-style camera) | Real lighting, shadows and meshes; chosen in the M2.4 spike, which replaced Phaser. The simulation never imports the renderer, so the view can change without touching game rules |
 | Entities | Plain TypeScript entities + **systems** (`game/src/sim/systems/`) | Simple and fully testable; an ECS such as bitECS will be benchmarked for the v3 swarm in M5 |
 | Bundler | **Vite** | Fast dev server, simple static builds |
 | Content validation | **Zod** | Modules, enemies, bugs and dilemmas defined as data and validated at load time |
@@ -22,9 +22,9 @@ title: Architecture
 
 ```text
 recompile/
-├── game/                    # The game (Vite + Phaser)
+├── game/                    # The game (Vite + Three.js)
 │   ├── src/
-│   │   ├── main.ts          # Boot, Phaser config
+│   │   ├── main.ts          # Boot: creates the Game
 │   │   ├── scenes/          # Boot, Menu, LatentSpace, Sector, Compile, Ending
 │   │   ├── ecs/
 │   │   │   ├── components/  # Position, Velocity, Power, Vision, AIState…
@@ -45,7 +45,7 @@ recompile/
 
 ```mermaid
 flowchart TB
-  subgraph Scenes["Phaser scenes"]
+  subgraph Scenes["Game modes"]
     Boot --> Menu --> LatentSpace --> Sector
     Sector --> Compile --> Sector
     Compile --> Ending
@@ -66,7 +66,7 @@ flowchart TB
 
 ## Key principles
 
-1. **Logic separate from rendering.** Systems operate on ECS data; Phaser only draws and reads
+1. **Logic separate from rendering.** Systems operate on ECS data; The Three.js renderer only draws and reads
    input. This keeps logic unit-testable without a browser.
 2. **Data-driven content.** A new module or enemy is a data entry plus, at most, one small
    behaviour function. Designers can tune numbers without touching systems.

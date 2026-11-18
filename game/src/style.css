@@ -30,7 +30,37 @@ body {
 }
 
 #game canvas {
-  image-rendering: pixelated;
+  display: block;
+}
+
+/* Brief green flash when a Compile completes. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: rgb(57, 255, 106);
+  opacity: 0;
+  z-index: 40;
+}
+
+body.flash::before {
+  animation: flash 0.4s ease-out;
+}
+
+@keyframes flash {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.flash::before {
+    animation: none;
+  }
 }
 
 /* Scanlines over everything (purely decorative). */

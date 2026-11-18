@@ -14,7 +14,7 @@ Development is split into milestones. Each one ends with something **playable** 
 | **M2.1: The Compile** | Scrap, fabricator and Compile siege, v1 SCRAPPER melee + Pounce, police officers, Act 1 Undercity sector, gamepad | ✅ Done: [play it](pathname:///recompile/play/) |
 | **M2.2: Modules** | Module drops, slots, rarity, tags and set bonuses, Workbench, porting modules at the Compile | ✅ Done: [play it](pathname:///recompile/play/) |
 | **M2.3: Run structure** | Route map with 3 sectors per act, sectors assembled from chunks, run summary, suspend/resume saves (Zod-validated) | Planned |
-| **M2.4: Modern 3D view** | Move rendering from flat 2D to a 3D scene with an angled, Diablo-style camera; detailed character models, props and environments; lighting and shadows. The simulation stays untouched | 🔬 Spike done, engine chosen: Three.js |
+| **M2.4: Modern 3D view** | Move rendering from flat 2D to a 3D scene with an angled, Diablo-style camera; detailed character models, props and environments; lighting and shadows. The simulation stays untouched | ✅ Renderer ported to Three.js; Phaser removed. Models, lighting and art still to polish |
 | **M3: Living humans** | Threat level, Adaptive Director, Bugs & Patches, Act 2 (REVENANT, ranged combat) | Planned |
 | **M4: Alignment** | Alignment meter, UI tiers, dilemmas, dark variants, system-log voice | Planned |
 | **M5: Becoming many** | Act 3 (HIVE swarm) and Act 4 (GRID possession), the hardest tech | Planned |
@@ -26,7 +26,7 @@ Development is split into milestones. Each one ends with something **playable** 
 The first prototype answers one question: **is being a weak, hunted robot fun?**
 [Play it in the browser](pathname:///recompile/play/) (keyboard required). Add `?seed=123` to the URL to replay a specific run.
 
-- [x] `game/` project scaffold: Vite + TypeScript + Phaser 4, CI, lint, unit tests, Playwright smoke test
+- [x] `game/` project scaffold: Vite + TypeScript + Phaser 4 (replaced by Three.js in M2.4), CI, lint, unit tests, Playwright smoke test
 - [x] Top-down movement with fixed timestep, camera, one handcrafted sector
 - [x] ECHO fog of war and guard/camera vision cones (ray casting)
 - [x] Noise system and guard state machine (patrol → suspicious → investigate → alert)
@@ -74,17 +74,18 @@ state, plus models, lighting and shadows, and an angled camera with readable fog
 
 ### M2.4 spike result
 
-`game/spike3d.html` (source in `game/src/render3d/spike.ts`) renders the real `World` with Three.js: instanced walls and floor, a perspective camera at a 52° pitch, shadows, a light that follows ECHO, procedural low-poly ECHO, guards and props, vision cones from the same `castRay`, fog of war and the existing DOM HUD. The simulation was not touched.
+The spike proved that a Three.js renderer in `game/src/render3d/` renders the real `World` with Three.js: instanced walls and floor, a perspective camera at a 52° pitch, shadows, a light that follows ECHO, procedural low-poly ECHO, guards and props, vision cones from the same `castRay`, fog of war and the existing DOM HUD. The simulation was not touched.
 
-- **Engine: Three.js.** Phaser is a 2D engine; real lighting, shadows and meshes would mean fighting it. Three.js adds about 137 kB gzipped (the 3D page, without Phaser).
+- **Engine: Three.js.** Phaser is a 2D engine; real lighting, shadows and meshes would mean fighting it. Three.js adds about 137 kB gzipped (and removing Phaser cut the game bundle from about 357 kB to about 134 kB gzipped).
 - **Cost:** about 50 draw calls and 18k triangles on a Undercity level; fog is a per-instance colour update only when visibility changes.
 - **Readability:** walls between the camera and ECHO must be cut down (done by dropping them to knee height); vision cones as flat fans on the floor stay readable.
-- **Still to do:** port the Phaser scene's input, menus, title and effects, then retire Phaser; real models (art pipeline still open); smooth wall cutaway; accessibility options for lighting.
+- **Done after the spike:** `Renderer3D` (scene) and `Game` (modes, input, menus, effects) replace the Phaser scene; keyboard, mouse (aim by ray onto the floor) and gamepad all work; Phaser is gone.
+- **Still to do:** real models (art pipeline still open); smooth wall cutaway; accessibility options for lighting.
 
 ## Open questions
 
 - Art pipeline for the 3D models: handmade low-poly, generated, or an asset pack?
 
-- ~~Phaser 3 or Phaser 4~~: decided in M1, **Phaser 4**.
+- ~~Phaser 3 or Phaser 4~~: decided in M1, **Phaser 4**; superseded by Three.js in M2.4.
 - How readable is the v3 swarm at 480×270? Prototype early in M5, or earlier as a spike.
 - Does the Alignment meter need a visible number for clarity? Validate in M4 playtests.

@@ -27,7 +27,7 @@ whether the humans were right to fear you.
 | **Run length** | Full runs, ~40–50 minutes from v0.1 to the ending |
 | **Structure** | 6 acts, each ending with a *Compile* siege that upgrades your body |
 | **Tone** | Starts hopeful, turns as dark as your choices make it |
-| **Tech** | TypeScript, Phaser, Vite; static hosting (GitHub Pages / itch.io) |
+| **Tech** | TypeScript, Three.js, Vite; static hosting (GitHub Pages / itch.io) |
 
 ## What makes it different
 
