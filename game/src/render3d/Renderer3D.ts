@@ -225,6 +225,16 @@ export class Renderer3D {
     }
   }
 
+  /** Rebuilds everything that depends on the kit once it has loaded (level pieces, props, ECHO and the guards). */
+  refreshModels(): void {
+    if (!this.kit || !this.world) return;
+    for (const g of this.guards.values()) this.dyn.remove(g);
+    this.guards.clear();
+    this.scene.remove(this.echo);
+    this.echoVersion = ''; // makes the next sync build ECHO again
+    this.buildLevel();
+  }
+
   setWorld(w: World): void {
     this.world = w;
     this.clearDynamic();
