@@ -62,7 +62,8 @@ O spike provou que um renderizador Three.js em `game/src/render3d/` renderiza o 
 - **Custo:** cerca de 50 draw calls e 18 mil triângulos em uma fase da Undercity; a névoa é só uma atualização de cor por instância quando a visibilidade muda.
 - **Legibilidade:** paredes entre a câmera e o ECHO precisam ser rebaixadas (feito, caem à altura do joelho); cones de visão como leques no chão continuam legíveis.
 - **Feito depois do spike:** `Renderer3D` (cena) e `Game` (modos, entrada, menus, efeitos) substituem a cena do Phaser; teclado, mouse (mira por raio no chão) e controle funcionam; o Phaser acabou.
-- **Falta:** modelos reais (pipeline de arte segue em aberto); recorte de parede suave; opções de acessibilidade para iluminação.
+- **Pipeline de arte decidido:** pacotes CC0 gratuitos da Quaternius para o cenário (o Modular SciFi MegaKit já entrou: pisos, painéis de parede, portas, terminais, baús, dutos) e corpos do ECHO modelados à mão. O Sci-Fi Essentials Kit (robôs, objetos) é o próximo.
+- **Falta:** corpos do ECHO feitos à mão, guardas de um pacote de personagens, cenário da Undercity (esgoto), recorte de parede suave, opções de acessibilidade para iluminação.
 
 ## Perguntas em aberto
 

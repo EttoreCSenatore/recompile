@@ -4,16 +4,22 @@
  * screen-up is grid -y and WASD keeps the meaning it had in 2D.
  */
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { CFG } from '../sim/config';
 import { TILE } from '../sim/grid';
 import { castRay } from '../sim/los';
 import type { GameEvent, Guard, GuardState, World } from '../sim/world';
+import { Kit, type PieceName } from './kit';
 
 const WALL_H = 1.7;
 const WALL_LOW = 0.35; // cut-down height for walls that would hide ECHO
 const CONE_RAYS = 28;
 const CAM_PITCH = THREE.MathUtils.degToRad(52); // Diablo-ish angle
 const CAM_DIST = 15;
+/** The MegaKit's modules are 4 units wide; our tiles are 1. */
+const KIT_S = 0.25;
+const WALL_PANELS: PieceName[] = ['WallBand_Straight', 'WallAstra_Straight'];
+const FLOOR_PIECES: PieceName[] = ['Platform_Simple']; // the kit's DarkPlates and Squares floors render near-black under our lighting
 const REDUCED_MOTION = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
 const C = {
@@ -81,7 +87,12 @@ export class Renderer3D {
   private wallH: number[] = [];
   private cutKey = '';
   private lastVis: Uint8Array | null = null;
-  private exitDoor!: THREE.Mesh;
+  private exitDoor!: THREE.Object3D;
+  private exitMats: THREE.MeshStandardMaterial[] = [];
+  private kit: Kit | null = null;
+  /** Kit instanced meshes that take the fog colour; `tiles[n]` is the grid tile whose visibility instance n follows. */
+  private fogParts: { mesh: THREE.InstancedMesh; tiles: number[] }[] = [];
+  private panelSets: { piece: PieceName; defs: { wall: number; face: number; fogTile: number }[]; meshes: THREE.InstancedMesh[] }[] = [];
 
   private readonly dyn = new THREE.Group();
   private props: THREE.Object3D[] = [];
@@ -108,6 +119,10 @@ export class Renderer3D {
     this.canvas = this.renderer.domElement;
     parent.appendChild(this.canvas);
 
+    // Metallic kit materials render black without an environment to reflect, so give them a dim one.
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.7;
     this.scene.background = new THREE.Color(0x020403);
     this.scene.fog = new THREE.Fog(0x020403, 14, 30);
     this.scene.add(new THREE.HemisphereLight(0x6f8f7a, 0x0a1410, 0.55));
@@ -159,6 +174,16 @@ export class Renderer3D {
   }
 
   // ── Level ────────────────────────────────────────────────────────────────
+
+  /** Loads the MegaKit models. On failure the renderer keeps using its procedural boxes. */
+  async loadKit(): Promise<void> {
+    try {
+      this.kit = await Kit.load();
+    } catch (e) {
+      console.warn('MegaKit failed to load; using procedural models', e);
+      this.kit = null;
+    }
+  }
 
   setWorld(w: World): void {
     this.world = w;
@@ -219,17 +244,126 @@ export class Renderer3D {
       this.wallMesh.setColorAt(n, new THREE.Color(WALL_COLOR));
     });
     this.mapGroup.add(this.floorMesh, this.wallMesh);
+    this.fogParts = [];
+    this.panelSets = [];
+    if (this.kit) this.buildKitLevel();
 
     const ex = w.level.exit;
-    this.exitDoor = new THREE.Mesh(boxGeo, mat(0x5a1414, 0x5a1414, 0.6));
-    this.exitDoor.position.set(ex.x + 0.5, 0.9, ex.y + 0.5);
-    this.exitDoor.scale.set(0.9, 1.8, 0.9);
+    if (this.kit) {
+      this.exitDoor = this.kit.clone('Door_Metal');
+      this.exitDoor.scale.set(0.24, 0.42, 0.24); // 4.2 x 4.05 -> about 1 x 1.7
+      this.exitDoor.position.set(ex.x + 0.5, 0, ex.y + 0.5);
+      this.exitMats = [];
+      this.exitDoor.traverse((o) => {
+        const mm = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+        if (mm) this.exitMats.push(mm);
+      });
+    } else {
+      const box = new THREE.Mesh(boxGeo, mat(0x5a1414, 0x5a1414, 0.6));
+      box.position.set(ex.x + 0.5, 0.9, ex.y + 0.5);
+      box.scale.set(0.9, 1.8, 0.9);
+      this.exitDoor = box;
+      this.exitMats = [box.material as THREE.MeshStandardMaterial];
+    }
     this.mapGroup.add(this.exitDoor);
     this.scene.add(this.mapGroup);
     this.lastVis = null;
     this.cutKey = '';
     this.buildProps();
     this.camTarget.set(w.player.x, 0, w.player.y);
+  }
+
+  /** Replaces the plain boxes with MegaKit floor platforms and wall panels (boxes stay as the solid core). */
+  private buildKitLevel(): void {
+    const kit = this.kit!;
+    const g = this.world.grid;
+    const hash = (x: number, y: number) => Math.abs((x * 73856093) ^ (y * 19349663));
+    const zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    const place = (x: number, y: number, rotY: number, sx: number, sy: number) =>
+      new THREE.Matrix4().compose(new THREE.Vector3(x, 0, y), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotY), new THREE.Vector3(sx, sy, sx));
+
+    // Floors: FLOOR and VENT tiles get a platform; the box stays only for water and the exit.
+    const byPiece = new Map<PieceName, { tiles: number[]; at: THREE.Matrix4[] }>();
+    this.floorIds.forEach((i, n) => {
+      const x = i % g.width;
+      const y = Math.floor(i / g.width);
+      const t = g.get(x, y);
+      if (t !== TILE.FLOOR && t !== TILE.VENT) return;
+      this.floorMesh.setMatrixAt(n, zero);
+      const piece = FLOOR_PIECES[hash(x, y) % FLOOR_PIECES.length]!;
+      const set = byPiece.get(piece) ?? { tiles: [], at: [] };
+      set.tiles.push(i);
+      set.at.push(place(x + 0.5, y + 0.5, (hash(y, x) % 4) * (Math.PI / 2), KIT_S, KIT_S));
+      byPiece.set(piece, set);
+      if (t === TILE.VENT) {
+        const grate = byPiece.get('Prop_Vent_Small') ?? { tiles: [], at: [] };
+        grate.tiles.push(i);
+        grate.at.push(place(x + 0.5, y + 0.5, 0, 0.5, 0.5).multiply(new THREE.Matrix4().makeTranslation(0, 0.02, 0)));
+        byPiece.set('Prop_Vent_Small', grate);
+      }
+    });
+    this.floorMesh.instanceMatrix.needsUpdate = true;
+    for (const [piece, set] of byPiece) {
+      for (const mesh of kit.instance(piece, set.at)) {
+        // The kit's floors are pale; tint them toward the lab's dim green so they don't blow out under ECHO's light.
+        if (piece !== 'Prop_Vent_Small') (mesh.material as THREE.MeshStandardMaterial).color.set(0x4d6a5b);
+        this.mapGroup.add(mesh);
+        this.fogParts.push({ mesh, tiles: set.tiles });
+      }
+    }
+
+    // Wall panels on every face that borders open floor. Faces: 0 east, 1 west, 2 south, 3 north.
+    const defsByPiece = new Map<PieceName, { wall: number; face: number; fogTile: number }[]>();
+    this.wallIds.forEach((i, n) => {
+      const x = i % g.width;
+      const y = Math.floor(i / g.width);
+      const dirs: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      dirs.forEach(([dx, dy], face) => {
+        if (g.get(x + dx, y + dy) === TILE.WALL || !g.inBounds(x + dx, y + dy)) return;
+        const piece = WALL_PANELS[hash(x + face, y) % WALL_PANELS.length]!;
+        const list = defsByPiece.get(piece) ?? [];
+        list.push({ wall: n, face, fogTile: g.index(x + dx, y + dy) });
+        defsByPiece.set(piece, list);
+      });
+    });
+    for (const [piece, defs] of defsByPiece) {
+      const meshes = kit.instance(piece, defs.map(() => zero));
+      for (const mesh of meshes) {
+        (mesh.material as THREE.MeshStandardMaterial).side = THREE.DoubleSide;
+        this.mapGroup.add(mesh);
+        this.fogParts.push({ mesh, tiles: defs.map((d) => d.fogTile) });
+      }
+      this.panelSets.push({ piece, defs, meshes });
+    }
+    this.placePanels((n) => this.wallH[n] ?? WALL_H);
+    // The box core is a dark filler behind the panels.
+    this.wallMesh.material = new THREE.MeshStandardMaterial({ color: 0x6f8579, roughness: 0.8, metalness: 0.2 });
+  }
+
+  /** Positions the wall panels; `heightOf(wallIndex)` lets the cutaway lower them. */
+  private placePanels(heightOf: (wall: number) => number): void {
+    const kit = this.kit!;
+    const g = this.world.grid;
+    const m = new THREE.Matrix4();
+    const rot = [0, Math.PI, -Math.PI / 2, Math.PI / 2];
+    for (const set of this.panelSets) {
+      const parts = kit.get(set.piece);
+      const rawH = kit.height(set.piece);
+      set.defs.forEach((d, i) => {
+        const id = this.wallIds[d.wall]!;
+        const x = id % g.width;
+        const y = Math.floor(id / g.width);
+        const cx = d.face === 0 ? x + 1 : d.face === 1 ? x : x + 0.5;
+        const cz = d.face === 2 ? y + 1 : d.face === 3 ? y : y + 0.5;
+        const placement = new THREE.Matrix4().compose(
+          new THREE.Vector3(cx, 0, cz),
+          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rot[d.face]!),
+          new THREE.Vector3(KIT_S, heightOf(d.wall) / rawH, KIT_S),
+        );
+        set.meshes.forEach((mesh, k) => mesh.setMatrixAt(i, m.multiplyMatrices(placement, parts[k]!.matrix)));
+      });
+      for (const mesh of set.meshes) mesh.instanceMatrix.needsUpdate = true;
+    }
   }
 
   private buildProps(): void {
@@ -243,6 +377,18 @@ export class Renderer3D {
       this.props.push(o);
     };
     for (const t of w.terminals) {
+      if (this.kit) {
+        const comp = this.kit.clone('Prop_Computer');
+        comp.scale.setScalar(0.5);
+        comp.position.set(t.x + 0.5, 0, t.y + 0.5);
+        const screens: THREE.MeshStandardMaterial[] = [];
+        comp.traverse((o) => {
+          const mm = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+          if (mm?.name.includes('Screen')) screens.push(mm);
+        });
+        add(comp, t, { terminal: t, screens });
+        continue;
+      }
       const grp = new THREE.Group();
       const body = new THREE.Mesh(boxGeo, mat(0x2b3a33));
       body.scale.set(0.7, 0.9, 0.5);
@@ -274,12 +420,24 @@ export class Renderer3D {
       add(grp, s, { scrap: s });
     }
     for (const c of w.caches) {
+      if (this.kit) {
+        const chest = this.kit.clone('Prop_Chest');
+        chest.scale.setScalar(0.45);
+        chest.position.set(c.x + 0.5, 0, c.y + 0.5);
+        add(chest, c, { cache: c });
+        continue;
+      }
       const m = new THREE.Mesh(boxGeo, mat(0x3a3f4a, C.blue, 0.4));
       m.scale.set(0.8, 0.55, 0.6);
       m.position.set(c.x + 0.5, 0.28, c.y + 0.5);
       add(m, c, { cache: c });
     }
-    if (w.workbench) {
+    if (w.workbench && this.kit) {
+      const b = w.workbench;
+      const holder = this.kit.clone('Prop_ItemHolder');
+      holder.position.set(b.x + 0.5, 0, b.y + 0.5);
+      add(holder, b, { bench: b });
+    } else if (w.workbench) {
       const b = w.workbench;
       const m = new THREE.Mesh(boxGeo, mat(0x4a3a22, 0xffd447, 0.3));
       m.scale.set(0.9, 0.55, 0.7);
@@ -484,6 +642,13 @@ export class Renderer3D {
     };
     apply(this.floorMesh, this.floorIds, (i) => TILE_COLOR[g.tiles[i] ?? TILE.FLOOR] ?? TILE_COLOR[TILE.FLOOR]!);
     apply(this.wallMesh, this.wallIds, () => WALL_COLOR);
+    for (const part of this.fogParts) {
+      part.tiles.forEach((i, n) => {
+        const k = w.visible[i] ? 1 : w.explored[i] ? 0.28 : 0;
+        part.mesh.setColorAt(n, c.setScalar(k));
+      });
+      if (part.mesh.instanceColor) part.mesh.instanceColor.needsUpdate = true;
+    }
   }
 
   /** Walls between the camera and ECHO drop low so ECHO is never hidden. Redone when the player changes tile. */
@@ -505,6 +670,15 @@ export class Renderer3D {
       this.wallMesh.setMatrixAt(n, m);
     });
     this.wallMesh.instanceMatrix.needsUpdate = true;
+    if (this.kit) {
+      const lowered = new Set<number>();
+      this.wallIds.forEach((i, n) => {
+        const x = i % g.width;
+        const y = Math.floor(i / g.width);
+        if (Math.abs(x - px) <= 3 && y >= py + 1 && y <= py + 5) lowered.add(n);
+      });
+      this.placePanels((n) => (lowered.has(n) ? WALL_LOW : (this.wallH[n] ?? WALL_H)));
+    }
   }
 
   private syncEntities(now: number): void {
@@ -606,11 +780,23 @@ export class Renderer3D {
     for (const o of this.props) {
       o.visible = !!w.visible[o.userData.tile as number] || !!w.explored[o.userData.tile as number];
       const t = o.userData.terminal as { hacked: boolean } | undefined;
-      if (t) (o.getObjectByName('screen') as THREE.Mesh).visible = !t.hacked;
+      if (t) {
+        const screen = o.getObjectByName('screen');
+        if (screen) screen.visible = !t.hacked;
+        for (const sm of (o.userData.screens as THREE.MeshStandardMaterial[] | undefined) ?? []) sm.color.setScalar(t.hacked ? 0.08 : 1);
+      }
       const s = o.userData.scrap as { taken: boolean } | undefined;
       if (s && s.taken) o.visible = false;
       const c = o.userData.cache as { opened: boolean } | undefined;
-      if (c) ((o as THREE.Mesh).material as THREE.MeshStandardMaterial).emissiveIntensity = c.opened ? 0 : 0.4;
+      if (c) {
+        o.traverse((n) => {
+          const mm = (n as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+          if (mm) {
+            mm.emissiveIntensity = c.opened ? 0 : 0.4;
+            if (this.kit) mm.color.setScalar(c.opened ? 0.35 : 1);
+          }
+        });
+      }
       if (o.userData.fab) {
         const core = o.getObjectByName('core') as THREE.Mesh;
         const f = w.fabricator!;
@@ -662,11 +848,12 @@ export class Renderer3D {
     });
 
     // Exit door.
-    const dm = this.exitDoor.material as THREE.MeshStandardMaterial;
     const open = w.grid.exitOpen;
-    dm.color.set(open ? C.green : 0x5a1414);
-    dm.emissive.set(open ? C.green : 0x5a1414);
-    dm.emissiveIntensity = open ? 0.8 + 0.4 * Math.sin(now / 200) : 0.6;
+    for (const dm of this.exitMats) {
+      dm.emissive.set(open ? C.green : 0x5a1414);
+      dm.emissiveIntensity = open ? 0.8 + 0.4 * Math.sin(now / 200) : 0.6;
+      if (!this.kit) dm.color.set(open ? C.green : 0x5a1414);
+    }
   }
 
   private setBar(b: { group: THREE.Group; fill: THREE.Mesh }, on: boolean, k: number): void {
