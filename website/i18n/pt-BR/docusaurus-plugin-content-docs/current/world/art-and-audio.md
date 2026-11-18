@@ -49,7 +49,8 @@ O mundo em si fica em tons urbanos dessaturados, para que a UI e as ameaças sem
 
 ## Pipeline de assets
 
-- Sprites no **Aseprite**, exportados como sprite sheets mais JSON.
+- **Modelos 3D** em glTF: as peças de cenário (pisos, painéis de parede, portas, terminais, baús, dutos) vêm do pacote gratuito CC0 **Quaternius Modular SciFi MegaKit**, carregado por `game/src/render3d/kit.ts` com reserva procedural; os corpos do ECHO e os guardas ainda são low-poly procedurais e serão modelados à mão no Blender. `scripts/import-megakit.py` copia as peças usadas e reduz as texturas (cerca de 0,4 MB no total).
+- Sprites no **Aseprite**, exportados como sprite sheets mais JSON (só HUD e arte 2D).
 - Mapas e pedaços no **Tiled**, exportados como JSON.
 - Áudio em **OGG** com MP3 de reserva.
 - Todos os assets são originais ou devidamente licenciados; as licenças ficam registradas em

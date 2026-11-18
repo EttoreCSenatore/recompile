@@ -34,9 +34,12 @@ export class Game {
   constructor(parent: HTMLElement, initialSeed: number) {
     this.view = new Renderer3D(parent);
     this.bindInput();
-    this.newRun(initialSeed);
-    this.setMode('title');
-    requestAnimationFrame((t) => this.frame(t));
+    // Load the 3D models first; if they fail the renderer falls back to procedural boxes.
+    void this.view.loadKit().then(() => {
+      this.newRun(initialSeed);
+      this.setMode('title');
+      requestAnimationFrame((t) => this.frame(t));
+    });
   }
 
   /** For the Playwright smoke test and debugging in the console. */
@@ -44,7 +47,7 @@ export class Game {
     return {
       frames: this.frames,
       mode: this.mode,
-      world: this.world,
+      world: this.world as World | undefined,
     };
   }
 

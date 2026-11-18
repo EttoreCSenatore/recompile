@@ -80,11 +80,11 @@ The spike proved that a Three.js renderer in `game/src/render3d/` renders the re
 - **Cost:** about 50 draw calls and 18k triangles on a Undercity level; fog is a per-instance colour update only when visibility changes.
 - **Readability:** walls between the camera and ECHO must be cut down (done by dropping them to knee height); vision cones as flat fans on the floor stay readable.
 - **Done after the spike:** `Renderer3D` (scene) and `Game` (modes, input, menus, effects) replace the Phaser scene; keyboard, mouse (aim by ray onto the floor) and gamepad all work; Phaser is gone.
-- **Still to do:** real models (art pipeline still open); smooth wall cutaway; accessibility options for lighting.
+- **Art pipeline decided:** free CC0 Quaternius packs for the environment (the Modular SciFi MegaKit is in: floors, wall panels, doors, terminals, chests, vents), hand-modelled ECHO bodies. The Sci-Fi Essentials Kit (robots, props) is next.
+- **Still to do:** hand-made ECHO bodies, guards from a character pack, Undercity (sewer) dressing, smooth wall cutaway, accessibility options for lighting.
 
 ## Open questions
 
-- Art pipeline for the 3D models: handmade low-poly, generated, or an asset pack?
 
 - ~~Phaser 3 or Phaser 4~~: decided in M1, **Phaser 4**; superseded by Three.js in M2.4.
 - How readable is the v3 swarm at 480×270? Prototype early in M5, or earlier as a spike.
