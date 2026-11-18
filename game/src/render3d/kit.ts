@@ -22,8 +22,15 @@ export const PIECES = [
   'Prop_Crate3',
   'Prop_ItemHolder',
   'Prop_Vent_Small',
+  'Prop_Barrel_Large',
+  'Prop_Light_Floor',
+  'Column_Pipes',
 ] as const;
-export type PieceName = (typeof PIECES)[number];
+
+/** Pieces from the Sci-Fi Essentials Kit (`public/models/essentials/`). */
+export const ESSENTIALS = ['Prop_Crate', 'Prop_Crate_Tarp', 'Prop_Barrel2_Closed', 'Prop_Locker', 'Prop_Shelves_WideShort', 'Prop_Ammo_Closed'] as const;
+
+export type PieceName = (typeof PIECES)[number] | (typeof ESSENTIALS)[number];
 
 export class Kit {
   private readonly parts = new Map<PieceName, Part[]>();
@@ -34,9 +41,11 @@ export class Kit {
   static async load(base = `${import.meta.env.BASE_URL}models/megakit/`): Promise<Kit> {
     const kit = new Kit();
     const loader = new GLTFLoader();
+    const essentials = `${import.meta.env.BASE_URL}models/essentials/`;
+    const jobs: [PieceName, string][] = [...PIECES.map((n): [PieceName, string] => [n, base]), ...ESSENTIALS.map((n): [PieceName, string] => [n, essentials])];
     await Promise.all(
-      PIECES.map(async (name) => {
-        const gltf = await loader.loadAsync(`${base}${name}.gltf`);
+      jobs.map(async ([name, dir]) => {
+        const gltf = await loader.loadAsync(`${dir}${name}.gltf`);
         gltf.scene.updateMatrixWorld(true);
         const parts: Part[] = [];
         gltf.scene.traverse((o) => {
@@ -82,6 +91,16 @@ export class Kit {
       mesh.receiveShadow = true;
       return mesh;
     });
+  }
+
+  /** Bounding box of a piece in kit units. */
+  bounds(name: PieceName): THREE.Box3 {
+    const box = new THREE.Box3();
+    for (const p of this.get(name)) {
+      p.geometry.computeBoundingBox();
+      box.union(p.geometry.boundingBox!.clone().applyMatrix4(p.matrix));
+    }
+    return box;
   }
 
   /** Height of a piece (max y of its parts), used to fit pieces to game-sized heights. */

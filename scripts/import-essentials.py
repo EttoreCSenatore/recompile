@@ -8,7 +8,11 @@ Get the zip from https://quaternius.itch.io/sci-fi-essentials-kit (free Standard
 import json, os, shutil, sys, tempfile, zipfile
 from PIL import Image
 
-PIECES = ['Enemy_QuadShell']  # animated quadruped robot: ECHO's SCRAPPER body
+PIECES = [
+    'Enemy_QuadShell',  # animated quadruped robot: ECHO's SCRAPPER body
+    'Prop_Crate', 'Prop_Crate_Tarp', 'Prop_Barrel2_Closed', 'Prop_Locker', 'Prop_Shelves_WideShort',
+    'Prop_Ammo_Closed',  # map dressing (desks and chairs need a texture the free zip lacks)
+]
 MAX_SIZE = {'BaseColor': 1024, 'Emissive': 512, 'Normal': 512, 'ORM': 512}
 
 def main(zip_path: str) -> None:
@@ -25,7 +29,8 @@ def main(zip_path: str) -> None:
             for img in data.get('images', []):
                 uri = img['uri']
                 if not os.path.exists(os.path.join(tmp, 'Textures', uri)):
-                    uri = uri.replace('_png.png', '.png')  # the kit's glTF names one texture with a stray "_png"
+                    # Some glTFs name textures with a stray "_png" or an "_Red" variant the zip doesn't ship.
+                    uri = uri.replace('_png.png', '.png').replace('_Red.png', '.png')
                 textures[uri] = os.path.splitext(img['uri'])[0] + '.webp'
                 img['uri'] = textures[uri]
             for buf in data['buffers']:
