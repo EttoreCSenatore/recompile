@@ -60,7 +60,7 @@ npm run build                  # static build of both languages
 ```text
 recompile/
 ├── website/   # Documentation (Docusaurus, EN + PT-BR)
-├── game/      # The game (TypeScript + Phaser 4 + Vite)
+├── game/      # The game (TypeScript + Three.js + Vite)
 └── docs/      # Screenshots and assets for READMEs
 ```
 

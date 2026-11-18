@@ -1,26 +1,11 @@
-import Phaser from 'phaser';
-import { GameScene } from './render/GameScene';
-import { parseSeed, randomSeed } from './sim/rng';
+import { Game, bootSeed } from './render3d/Game';
 
-const seed = parseSeed(new URLSearchParams(window.location.search).get('seed')) ?? randomSeed();
-
-const game = new Phaser.Game({
-  type: Phaser.AUTO,
-  parent: 'game',
-  width: 960,
-  height: 540,
-  backgroundColor: '#050806',
-  pixelArt: true,
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  banner: false,
-  input: { gamepad: true },
-  scene: [new GameScene(seed)],
-});
+const game = new Game(document.getElementById('game')!, bootSeed());
 
 // Exposed for the Playwright smoke test and for debugging in the console.
 declare global {
   interface Window {
-    __recompile?: Phaser.Game;
+    __recompile?: () => ReturnType<Game['debug']>;
   }
 }
-window.__recompile = game;
+window.__recompile = () => game.debug();

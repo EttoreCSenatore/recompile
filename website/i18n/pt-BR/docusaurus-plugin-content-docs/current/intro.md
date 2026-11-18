@@ -27,7 +27,7 @@ se os humanos estavam certos em ter medo.
 | **Duração da run** | Runs completas, ~40–50 minutos da v0.1 até o final |
 | **Estrutura** | 6 atos, cada um termina com um cerco de *Compilação* que melhora seu corpo |
 | **Tom** | Começa esperançoso e fica tão sombrio quanto suas escolhas |
-| **Tecnologia** | TypeScript, Phaser, Vite; hospedagem estática (GitHub Pages / itch.io) |
+| **Tecnologia** | TypeScript, Three.js, Vite; hospedagem estática (GitHub Pages / itch.io) |
 
 ## O que torna o jogo diferente
 

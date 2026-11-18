@@ -13,7 +13,7 @@ test('boots, plays and pauses without errors or CSP violations', async ({ page }
   await expect(page.locator('#overlay')).toContainText('seed 1234');
   await expect(page.locator('canvas')).toBeVisible();
   // Wait until the game loop is actually ticking before sending input.
-  await page.waitForFunction(() => (window.__recompile?.loop.frame ?? 0) > 10);
+  await page.waitForFunction(() => (window.__recompile?.().frames ?? 0) > 10);
 
   await page.keyboard.press('Enter');
   await expect(page.locator('#hud')).toBeVisible();
