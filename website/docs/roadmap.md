@@ -82,7 +82,8 @@ The spike proved that a Three.js renderer in `game/src/render3d/` renders the re
 - **Done after the spike:** `Renderer3D` (scene) and `Game` (modes, input, menus, effects) replace the Phaser scene; keyboard, mouse (aim by ray onto the floor) and gamepad all work; Phaser is gone.
 - **Art pipeline decided:** free CC0 Quaternius packs for the environment (the Modular SciFi MegaKit is in: floors, wall panels, doors, terminals, chests, vents), hand-modelled ECHO bodies. The Sci-Fi Essentials Kit is in too: its animated QuadShell robot is the SCRAPPER body.
 - **Map dressing done:** visual-only clutter along walls, themed per level (lab / Undercity), and a hand-built DUSTMITE.
-- **Still to do:** hand-made bodies for later versions, guards from a character pack, smooth wall cutaway, accessibility options for lighting.
+- **Guards are human now:** rigged Quaternius bodies with animations picked from AI state.
+- **Still to do:** hand-made bodies for later versions, cap and pistol props for officers, smooth wall cutaway, accessibility options for lighting.
 
 ## Open questions
 

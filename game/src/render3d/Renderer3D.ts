@@ -64,6 +64,17 @@ const TILE_COLOR: Record<number, number> = {
 };
 const WALL_COLOR = 0x5b7566;
 
+/** Animation state of a human guard (clips come from the Universal Animation Library). */
+interface GuardAnim {
+  mixer: THREE.AnimationMixer;
+  actions: Record<string, THREE.AnimationAction>;
+  current: string;
+  px: number;
+  py: number;
+}
+
+const ud0 = (m: THREE.Object3D): boolean => !!(m.userData as { anim?: GuardAnim | null }).anim;
+
 const GUARD_CONE: Record<GuardState, [number, number]> = {
   patrol: [0xfff1a8, 0.14],
   suspicious: [C.amber, 0.22],
@@ -633,22 +644,70 @@ export class Renderer3D {
     return this.makeDustmite();
   }
 
+  /** A rigged human (Quaternius Superhero body) in a flat uniform colour, plus its animation mixer. */
+  private makeHumanGuard(g: Guard): { body: THREE.Group; suit: THREE.MeshStandardMaterial; anim: GuardAnim } | null {
+    const humans = this.kit?.humans;
+    if (!humans) return null;
+    const src = g.kind === 'officer' ? humans.female : humans.male;
+    const model = cloneSkinned(src.scene);
+    const height = new THREE.Box3().setFromObject(src.scene).getSize(new THREE.Vector3()).y || 1.8;
+    model.scale.setScalar(1.35 / height);
+    model.rotation.y = Math.PI / 2; // the model faces +z; our facing axis is +x
+    let suit: THREE.MeshStandardMaterial | null = null;
+    model.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      m.frustumCulled = false; // skinned bounds are not updated by the animation
+      const mm = (m.material as THREE.MeshStandardMaterial).clone();
+      if (mm.name.includes('Superhero')) {
+        mm.map = null; // flat uniform colour instead of the dark suit texture
+        mm.color.set(g.kind === 'officer' ? 0xd9c24a : 0xe08a4a);
+        suit = mm;
+      }
+      m.material = mm;
+    });
+    if (!suit) return null;
+    const body = new THREE.Group();
+    body.add(model);
+    shadowed(body);
+    const mixer = new THREE.AnimationMixer(model);
+    const actions: Record<string, THREE.AnimationAction> = {};
+    for (const clip of humans.clips) actions[clip.name] = mixer.clipAction(clip);
+    return { body, suit, anim: { mixer, actions, current: '', px: g.x, py: g.y } };
+  }
+
   private makeGuard(g: Guard): THREE.Group {
     const grp = new THREE.Group();
-    const body = new THREE.Group();
-    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.45, 4, 10), mat(g.kind === 'officer' ? 0xd9c24a : 0xe08a4a));
-    torso.position.y = 0.55;
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 10), mat(0xe3c3a0));
-    head.position.y = 1.15;
-    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.06, 0.06), mat(C.white, C.white, 0.5));
-    nose.position.set(0.18, 1.15, 0);
-    body.add(torso, head, nose);
-    if (g.kind === 'officer') {
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.06, 10), mat(0x1b2a4a));
-      cap.position.y = 1.3;
-      body.add(cap);
+    const human = this.makeHumanGuard(g);
+    let body: THREE.Group;
+    let tint: (color: number, intensity: number) => void;
+    if (human) {
+      body = human.body;
+      tint = (color, intensity) => {
+        human.suit.emissive.set(color);
+        human.suit.emissiveIntensity = intensity;
+      };
+    } else {
+      body = new THREE.Group();
+      const torsoMat = mat(g.kind === 'officer' ? 0xd9c24a : 0xe08a4a);
+      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.45, 4, 10), torsoMat);
+      torso.position.y = 0.55;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 10), mat(0xe3c3a0));
+      head.position.y = 1.15;
+      const nose = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.06, 0.06), mat(C.white, C.white, 0.5));
+      nose.position.set(0.18, 1.15, 0);
+      body.add(torso, head, nose);
+      if (g.kind === 'officer') {
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.06, 10), mat(0x1b2a4a));
+        cap.position.y = 1.3;
+        body.add(cap);
+      }
+      shadowed(body);
+      tint = (color, intensity) => {
+        torsoMat.emissive.set(color);
+        torsoMat.emissiveIntensity = intensity;
+      };
     }
-    shadowed(body);
     grp.add(body);
     // Status bars live outside the rotating body so they always face the camera.
     const bars = new THREE.Group();
@@ -665,7 +724,7 @@ export class Renderer3D {
     };
     bars.rotation.x = -CAM_PITCH;
     grp.add(bars);
-    grp.userData = { body, torso, sus: bar(C.amber, 1.55), hp: bar(C.red, 1.7), bars };
+    grp.userData = { body, tint, anim: human?.anim ?? null, sus: bar(C.amber, 1.55), hp: bar(C.red, 1.7), bars };
     return grp;
   }
 
@@ -886,19 +945,20 @@ export class Renderer3D {
       }
       const visible = this.tileSeen(g.x, g.y);
       m.visible = visible;
-      m.position.set(g.x, g.state === 'down' ? 0.2 : 0, g.y);
+      m.position.set(g.x, g.state === 'down' && !ud0(m) ? 0.2 : 0, g.y);
       const ud = m.userData as {
         body: THREE.Group;
-        torso: THREE.Mesh;
+        tint: (color: number, intensity: number) => void;
+        anim: GuardAnim | null;
         sus: { group: THREE.Group; fill: THREE.Mesh };
         hp: { group: THREE.Group; fill: THREE.Mesh };
       };
       // Only the body turns; the status bars keep facing the camera.
-      ud.body.rotation.set(0, -g.facing, g.state === 'down' ? Math.PI / 2 : 0);
-      const tm = ud.torso.material as THREE.MeshStandardMaterial;
+      // Humans play a death animation; the procedural body just tips over.
+      ud.body.rotation.set(0, -g.facing, g.state === 'down' && !ud.anim ? Math.PI / 2 : 0);
       const flash = g.hitFlash > 0;
-      tm.emissive.set(flash ? C.white : g.state === 'alert' ? C.red : g.state === 'stunned' ? C.blue : 0x000000);
-      tm.emissiveIntensity = flash ? 1 : 0.5;
+      ud.tint(flash ? C.white : g.state === 'alert' ? C.red : g.state === 'stunned' ? C.blue : 0x000000, flash ? 1 : 0.5);
+      if (ud.anim && visible) this.animateGuard(g, ud.anim);
       const showSus = g.suspicion > 0.02 && g.state !== 'alert' && g.state !== 'stunned' && g.state !== 'down';
       this.setBar(ud.sus, showSus, g.suspicion);
       this.setBar(ud.hp, g.hp < g.maxHp && g.state !== 'down', g.hp / g.maxHp);
@@ -1008,6 +1068,33 @@ export class Renderer3D {
       dm.emissiveIntensity = open ? 0.8 + 0.4 * Math.sin(now / 200) : 0.6;
       if (!this.kit) dm.color.set(open ? C.green : 0x5a1414);
     }
+  }
+
+  /** Picks a clip from the guard's state and movement; crossfades when it changes. */
+  private animateGuard(g: Guard, a: GuardAnim): void {
+    const moved = Math.hypot(g.x - a.px, g.y - a.py);
+    a.px = g.x;
+    a.py = g.y;
+    const moving = this.dt > 0 && moved / this.dt > 0.4;
+    const officer = g.kind === 'officer';
+    let want: string;
+    if (g.state === 'down') want = 'Death01';
+    else if (g.state === 'stunned') want = 'Hit_Chest';
+    else if (g.state === 'alert') want = moving ? 'Jog_Fwd_Loop' : officer ? 'Pistol_Idle_Loop' : 'Idle_Loop';
+    else if (g.state === 'suspicious' || g.state === 'investigate') want = moving ? 'Walk_Loop' : 'Idle_Torch_Loop';
+    else want = moving ? 'Walk_Loop' : 'Idle_Loop';
+    const next = a.actions[want];
+    if (next && want !== a.current) {
+      next.reset();
+      if (want === 'Death01' || want === 'Hit_Chest') {
+        next.setLoop(THREE.LoopOnce, 1);
+        next.clampWhenFinished = true;
+      } else next.setLoop(THREE.LoopRepeat, Infinity);
+      next.play();
+      if (a.current) a.actions[a.current]?.crossFadeTo(next, 0.2, false);
+      a.current = want;
+    }
+    a.mixer.update(this.dt);
   }
 
   /** Drives the QuadShell animations from sim state: idle, walk (slower when sneaking), a one-shot attack. */

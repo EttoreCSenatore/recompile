@@ -36,6 +36,8 @@ export class Kit {
   private readonly parts = new Map<PieceName, Part[]>();
   /** Animated SCRAPPER body from the Essentials Kit; null if it failed to load (the renderer then draws legs from cylinders). */
   quad: GLTF | null = null;
+  /** Rigged human bodies and shared animation clips (Universal Base Characters + Animation Library); null if they failed to load. */
+  humans: { male: GLTF; female: GLTF; clips: THREE.AnimationClip[] } | null = null;
 
   /** Loads every piece; throws if any fails (the renderer then falls back to procedural models). */
   static async load(base = `${import.meta.env.BASE_URL}models/megakit/`): Promise<Kit> {
@@ -60,6 +62,13 @@ export class Kit {
       console.warn('QuadShell failed to load; using procedural SCRAPPER', e);
       return null;
     });
+    const chars = `${import.meta.env.BASE_URL}models/characters/`;
+    kit.humans = await Promise.all([loader.loadAsync(`${chars}Superhero_Male_FullBody.gltf`), loader.loadAsync(`${chars}Superhero_Female_FullBody.gltf`), loader.loadAsync(`${chars}animations.glb`)])
+      .then(([male, female, anims]) => ({ male, female, clips: anims.animations }))
+      .catch((e) => {
+        console.warn('Human models failed to load; using procedural guards', e);
+        return null;
+      });
     return kit;
   }
 
