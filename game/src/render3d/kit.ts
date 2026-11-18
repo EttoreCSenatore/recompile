@@ -3,7 +3,7 @@
  * The kit's units are 4 per tile-sized module, so callers scale pieces to the game's 1-unit tiles.
  */
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 /** One mesh of a piece, with the transform it has inside the piece. */
 export interface Part {
@@ -27,6 +27,8 @@ export type PieceName = (typeof PIECES)[number];
 
 export class Kit {
   private readonly parts = new Map<PieceName, Part[]>();
+  /** Animated SCRAPPER body from the Essentials Kit; null if it failed to load (the renderer then draws legs from cylinders). */
+  quad: GLTF | null = null;
 
   /** Loads every piece; throws if any fails (the renderer then falls back to procedural models). */
   static async load(base = `${import.meta.env.BASE_URL}models/megakit/`): Promise<Kit> {
@@ -44,6 +46,11 @@ export class Kit {
         kit.parts.set(name, parts);
       }),
     );
+    // The robot is optional: a failure here must not lose the environment pieces.
+    kit.quad = await loader.loadAsync(`${import.meta.env.BASE_URL}models/essentials/Enemy_QuadShell.gltf`).catch((e) => {
+      console.warn('QuadShell failed to load; using procedural SCRAPPER', e);
+      return null;
+    });
     return kit;
   }
 

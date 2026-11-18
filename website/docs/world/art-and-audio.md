@@ -49,7 +49,7 @@ The world itself stays in desaturated urban tones, so the UI and threats always 
 
 ## Asset pipeline
 
-- **3D models** as glTF: environment pieces (floors, wall panels, doors, terminals, chests, vents) come from the free CC0 **Quaternius Modular SciFi MegaKit**, loaded by `game/src/render3d/kit.ts` with a procedural fallback; ECHO's bodies and the guards are still procedural low-poly and will be hand-modelled in Blender. `scripts/import-megakit.py` copies the used pieces and shrinks their textures (about 0.4 MB in total).
+- **3D models** as glTF: environment pieces (floors, wall panels, doors, terminals, chests, vents) come from the free CC0 **Quaternius Modular SciFi MegaKit**, loaded by `game/src/render3d/kit.ts` with a procedural fallback; ECHO's SCRAPPER body is the animated QuadShell robot from the CC0 **Quaternius Sci-Fi Essentials Kit** (`scripts/import-essentials.py`); DUSTMITE and the guards are still procedural low-poly, and the other bodies will be hand-modelled in Blender. `scripts/import-megakit.py` copies the used pieces and shrinks their textures (about 0.4 MB in total).
 - Sprites in **Aseprite**, exported as sprite sheets plus JSON (HUD and 2D art only).
 - Maps and chunks in **Tiled**, exported as JSON.
 - Audio as **OGG** with MP3 fallback.
