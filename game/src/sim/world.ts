@@ -12,7 +12,9 @@ import { updateModules } from './systems/loadout';
 import { investigate, updateGuards } from './systems/guards';
 import { updatePlayer } from './systems/player';
 import { updateProjectiles } from './systems/projectiles';
+import { updateHunters } from './systems/hunters';
 import { updateSiege } from './systems/siege';
+import { cardMods, type CardId } from './upgrades';
 import { VERSIONS, type VersionDef, type VersionId } from './versions';
 
 export type GuardState = 'patrol' | 'suspicious' | 'investigate' | 'alert' | 'stunned' | 'down';
@@ -31,6 +33,8 @@ export interface Guard {
   seesPlayer: boolean;
   /** Reinforcement sent to destroy the fabricator during a Compile. */
   siege: boolean;
+  /** Hunter drones always know where ECHO is and chase it. */
+  hunter: boolean;
   route: Vec[];
   routeIndex: number;
   sentry: boolean;
@@ -170,8 +174,14 @@ export interface Player {
   interactLatch: boolean;
   pounce: { dx: number; dy: number; t: number } | null;
   /** Short burst of speed with brief invulnerability (bullets and tasers miss). */
-  dash: { dx: number; dy: number; t: number } | null;
+  dash: { dx: number; dy: number; t: number; hit: number[] } | null;
   dashCooldown: number;
+  /** LEARNING: XP toward the next level, current level, card ranks, and the pending card offer. */
+  xp: number;
+  level: number;
+  cards: Partial<Record<CardId, number>>;
+  pendingLevels: number;
+  cardOffer: CardId[] | null;
   hitFlash: number;
 }
 
@@ -188,6 +198,8 @@ export type GameEvent =
   | { type: 'hurt'; x: number; y: number; amount: number }
   | { type: 'kill'; x: number; y: number }
   | { type: 'dash'; x: number; y: number; facing: number }
+  | { type: 'xp'; x: number; y: number; amount: number }
+  | { type: 'levelup'; level: number }
   | { type: 'shot'; x: number; y: number; tx: number; ty: number }
   | { type: 'compiled'; version: VersionId }
   | { type: 'pickup'; x: number; y: number }
@@ -260,6 +272,8 @@ export class World {
   private events: GameEvent[] = [];
   private visKey = '';
   threatCalm = 0;
+  /** Seconds until the next hunter drone may launch. */
+  hunterTimer = 0;
   threatCooldown = 0;
   lastNoTargetLog = -10;
 
@@ -292,6 +306,11 @@ export class World {
       pounce: null,
       dash: null,
       dashCooldown: 0,
+      xp: 0,
+      level: 1,
+      cards: {},
+      pendingLevels: 0,
+      cardOffer: null,
       hitFlash: 0,
     };
     this.loadLevel(options.startLevel ?? 'lab');
@@ -309,7 +328,11 @@ export class World {
   /** Recomputes cached stats after the loadout changes. */
   refreshBuild(): void {
     const p = this.player;
-    p.build = computeBuild(p.equipped);
+    const build = computeBuild(p.equipped);
+    const extra = cardMods(this);
+    for (const k of Object.keys(extra) as (keyof typeof extra)[]) build.mods[k] += extra[k];
+    build.mods.cooldown = Math.min(build.mods.cooldown, 0.7); // cooldowns can never reach zero
+    p.build = build;
     p.power = Math.min(p.power, this.maxPower);
     this.visKey = '';
   }
@@ -386,6 +409,7 @@ export class World {
     this.threat = 1;
     this.threatCalm = 0;
     this.threatCooldown = 0;
+    this.hunterTimer = CFG.hunters.every / 2;
     this.explored = new Uint8Array(this.grid.width * this.grid.height);
     this.visKey = '';
     this.updateVisibility();
@@ -397,23 +421,24 @@ export class World {
   addGuard(
     kind: EnemyKind,
     pos: Vec,
-    opts: { route?: Vec[]; routeIndex?: number; facing?: number; siege?: boolean } = {},
+    opts: { route?: Vec[]; routeIndex?: number; facing?: number; siege?: boolean; hunter?: boolean } = {},
   ): Guard {
     const def = ENEMIES[kind];
     const id = this.guards.length;
     const facing = opts.facing ?? 0;
     const g: Guard = {
       id,
-      name: `${this.level.callSign}-${String(id + 1).padStart(2, '0')}`,
+      name: kind === 'drone' ? `DRONE-${String(id + 1).padStart(2, '0')}` : `${this.level.callSign}-${String(id + 1).padStart(2, '0')}`,
       kind,
       hp: def.hp,
       maxHp: def.hp,
       ...pos,
       facing,
-      state: opts.siege ? 'alert' : 'patrol',
-      suspicion: opts.siege ? 1 : 0,
+      state: opts.siege || opts.hunter ? 'alert' : 'patrol',
+      suspicion: opts.siege || opts.hunter ? 1 : 0,
       seesPlayer: false,
       siege: opts.siege ?? false,
+      hunter: opts.hunter ?? false,
       route: opts.route ?? [{ x: Math.floor(pos.x), y: Math.floor(pos.y) }],
       routeIndex: opts.routeIndex ?? 0,
       sentry: (opts.route?.length ?? 1) === 1,
@@ -453,6 +478,7 @@ export class World {
     updateAbilityAndAttack(this, dt, input);
     updateInteract(this, dt, input.interact);
     updateSiege(this, dt);
+    updateHunters(this, dt);
     updateCameras(this, dt);
     updateGuards(this, dt);
     updateProjectiles(this, dt);
@@ -521,8 +547,9 @@ export class World {
     this.log(`> THREAT LEVEL ${this.threat}`, 'danger');
   }
 
+  /** A human guard is on alert. Hunter drones don't count, so they don't block regen or threat decay. */
   anyAlert(): boolean {
-    return this.guards.some((g) => g.state === 'alert');
+    return this.guards.some((g) => g.state === 'alert' && !g.hunter);
   }
 
   bark(g: Guard, text: string, level: LogLevel, force = false): void {

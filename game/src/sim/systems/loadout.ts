@@ -1,7 +1,6 @@
 import { CFG } from '../config';
 import {
   canTune,
-  computeBuild,
   defOf,
   RARITY_INFO,
   tuned,
@@ -165,7 +164,7 @@ export function beginPort(w: World): void {
   const all = [...Object.values(p.equipped), ...p.bag].filter((m): m is ModuleInst => !!m);
   p.equipped = {};
   p.bag = [];
-  p.build = computeBuild({});
+  w.refreshBuild(); // keeps card (subroutine) mods
   const fits = all.filter((m) => p.version.slots.includes(defOf(m).slot));
   const lost = all.length - fits.length;
   if (lost > 0) w.log(`> ${lost} module(s) have no matching slot in ${p.version.codename} and were lost.`, 'warn');

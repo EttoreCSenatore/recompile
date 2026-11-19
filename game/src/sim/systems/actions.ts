@@ -5,6 +5,7 @@ import { center, dist, type Guard, type InteractTarget, type World } from '../wo
 import { damageGuard, stunGuard } from './guards';
 import { openCache } from './loadout';
 import { startCompile } from './siege';
+import { gainXp, rank } from '../upgrades';
 
 // ── Attack and abilities ────────────────────────────────────────────────
 
@@ -16,7 +17,9 @@ export function updateAbilityAndAttack(w: World, _dt: number, input: { attack: b
 
 function attack(w: World): void {
   const p = w.player;
-  const a = p.version.attack!;
+  const base = p.version.attack!;
+  const sweep = rank(w, 'wide_arc');
+  const a = { ...base, arc: base.arc * (1 + 0.25 * sweep), range: base.range + 0.2 * sweep };
   const mods = p.build.mods;
   p.attackCooldown = a.cooldown * (1 - mods.cooldown);
   if (mods.attackCost > 0) p.power -= mods.attackCost;
@@ -49,10 +52,11 @@ function staticShock(w: World): void {
   const ab = p.version.ability;
   let best: Guard | null = null;
   let bestD = Infinity;
+  const range = CFG.stun.range + 0.5 * rank(w, 'static_field');
   for (const g of w.guards) {
     if (g.state === 'stunned' || g.state === 'down') continue;
     const d = dist(p, g);
-    if (d <= CFG.stun.range && d < bestD && clearPath(w.grid, p.x, p.y, g.x, g.y)) {
+    if (d <= range && d < bestD && clearPath(w.grid, p.x, p.y, g.x, g.y)) {
       best = g;
       bestD = d;
     }
@@ -64,31 +68,61 @@ function staticShock(w: World): void {
     }
     return;
   }
-  if (p.power <= ab.cost) {
+  const cost = abilityCost(w);
+  if (p.power <= cost) {
     w.log('> static_shock: insufficient power.', 'warn');
     return;
   }
-  p.power -= ab.cost;
+  p.power -= cost;
   p.abilityCooldown = ab.cooldown * (1 - p.build.mods.cooldown);
   const stun = CFG.stun.duration * (1 + p.build.mods.stun);
-  stunGuard(best, stun);
+  shockOne(w, best, stun);
   empBurst(w, best.x, best.y);
-  w.stats.stuns++;
-  w.emit({ type: 'stun', x: best.x, y: best.y });
-  w.log(`> static_shock -> ${best.name}: STUNNED (${stun.toFixed(1)}s)`, 'good');
   w.emitNoise(best.x, best.y, CFG.stun.noiseRadius, best);
+  // CHAIN SHOCK: the charge jumps to more enemies near the first target.
+  let from: Guard = best;
+  for (let i = 0; i < rank(w, 'chain_shock'); i++) {
+    const next = w.guards
+      .filter((g) => g.state !== 'down' && g.state !== 'stunned' && dist(g, from) <= 3 && clearPath(w.grid, from.x, from.y, g.x, g.y))
+      .sort((a, b) => dist(a, from) - dist(b, from))[0];
+    if (!next) break;
+    w.emit({ type: 'shot', x: from.x, y: from.y, tx: next.x, ty: next.y });
+    shockOne(w, next, stun);
+    from = next;
+  }
+}
+
+/** One static-shock hit: drones short out and are destroyed, people are stunned. */
+function shockOne(w: World, g: Guard, stun: number): void {
+  w.emit({ type: 'stun', x: g.x, y: g.y });
+  if (g.kind === 'drone') {
+    damageGuard(w, g, 1);
+    return;
+  }
+  stunGuard(g, stun);
+  w.stats.stuns++;
+  gainXp(w, 'stun');
+  const leech = rank(w, 'leech');
+  if (leech > 0) w.player.power = Math.min(w.maxPower, w.player.power + 1.5 * leech);
+  w.log(`> static_shock -> ${g.name}: STUNNED (${stun.toFixed(1)}s)`, 'good');
+}
+
+/** Ability Power cost after EFFICIENT ROUTINES. */
+function abilityCost(w: World): number {
+  return w.player.version.ability.cost * (1 - 0.2 * rank(w, 'efficient'));
 }
 
 function startPounce(w: World): void {
   const p = w.player;
   const ab = p.version.ability;
-  if (p.power <= ab.cost) {
+  const cost = abilityCost(w);
+  if (p.power <= cost) {
     w.log('> pounce: insufficient power.', 'warn');
     return;
   }
   const reach = Math.min(POUNCE.distance, castRay(w.grid, p.x, p.y, p.facing, POUNCE.distance) - p.version.radius - 0.05);
   if (reach < 0.6) return;
-  p.power -= ab.cost;
+  p.power -= cost;
   p.abilityCooldown = ab.cooldown * (1 - p.build.mods.cooldown);
   p.pounce = { dx: Math.cos(p.facing) * reach, dy: Math.sin(p.facing) * reach, t: 0 };
 }
@@ -101,7 +135,10 @@ export function landPounce(w: World): void {
   for (const g of w.guards) {
     if (g.state === 'down' || dist(p, g) > POUNCE.hitRadius + CFG.guard.radius) continue;
     damageGuard(w, g, POUNCE.damage + p.build.mods.damage);
-    if (g.hp > 0) stunGuard(g, POUNCE.stun * (1 + p.build.mods.stun));
+    if (g.hp > 0) {
+      stunGuard(g, POUNCE.stun * (1 + p.build.mods.stun));
+      gainXp(w, 'stun');
+    }
   }
   empBurst(w, p.x, p.y);
 }
@@ -264,6 +301,7 @@ function complete(w: World, t: InteractTarget): void {
   }
   if (t.kind === 'cache') {
     openCache(w, t.id);
+    gainXp(w, 'cache');
     return;
   }
   w.stats.hacks += t.kind === 'scrap' ? 0 : 1;
@@ -271,6 +309,7 @@ function complete(w: World, t: InteractTarget): void {
     w.scrapPiles[t.id]!.taken = true;
     p.scrap += r.scrap;
     w.log(`> salvaged components. +${r.scrap} SCRAP`, 'good');
+    gainXp(w, 'scrap');
     return;
   }
   if (t.kind === 'camera') {
@@ -280,6 +319,7 @@ function complete(w: World, t: InteractTarget): void {
     const gain = Math.round(r.camera * (1 + p.build.mods.data));
     p.data += gain;
     w.log(`> ${cam.name} disabled. +${gain} DATA`, 'good');
+    gainXp(w, 'camera');
     spreadVirus(w, cam);
     return;
   }
@@ -288,6 +328,7 @@ function complete(w: World, t: InteractTarget): void {
   const gain = Math.round(r[term.kind] * (1 + p.build.mods.data));
   p.data += gain;
   spreadVirus(w, center(term));
+  gainXp(w, term.kind);
   if (term.kind === 'data') {
     w.log(`> data cache extracted. +${gain} DATA`, 'good');
   } else if (w.level.securityUnlocks === 'fabricator') {

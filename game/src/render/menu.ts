@@ -23,9 +23,10 @@ import {
   togglePort,
   unequip,
 } from '../sim/systems/loadout';
+import { CARDS, pickCard, rank } from '../sim/upgrades';
 import type { World } from '../sim/world';
 
-export type MenuKind = 'loadout' | 'port';
+export type MenuKind = 'loadout' | 'port' | 'levelup';
 
 export interface Row {
   label: string;
@@ -74,6 +75,30 @@ export function buildMenu(w: World, kind: MenuKind, close: () => void): MenuMode
   const sets = (Object.entries(p.build.tagCounts) as [Tag, number][])
     .filter(([, n]) => n > 0)
     .map(([tag, count]) => ({ tag, count, active: count >= SET_SIZE, bonus: TAGS[tag].bonus }));
+
+  if (kind === 'levelup') {
+    const offer = p.cardOffer ?? [];
+    offer.forEach((id, i) => {
+      const c = CARDS[id];
+      const r = rank(w, id);
+      rows.push({
+        label: `${i + 1} · ${c.name}`,
+        color: '#ffd447',
+        stats: [{ text: c.text, bad: false }],
+        note: r === 0 ? `NEW · max rank ${c.max}` : `rank ${r} → ${r + 1} of ${c.max}`,
+        section: i === 0 ? 'CHOOSE ONE' : undefined,
+        act: () => pickCard(w, i),
+      });
+    });
+    const owned = (Object.entries(p.cards) as [keyof typeof CARDS, number][]).map(([id, n]) => `${CARDS[id].name} ${n}`).join(' · ');
+    return {
+      title: `ITERATION ${p.level - p.pendingLevels + 1}`,
+      sub: `ECHO learned from the fight. Install a subroutine.${p.pendingLevels > 1 ? ` (${p.pendingLevels} picks waiting)` : ''}${owned ? ` Installed: ${owned}.` : ''}`,
+      footer: '1 2 3 · or ↑↓ + ENTER · or click',
+      rows,
+      sets: [],
+    };
+  }
 
   if (kind === 'port') {
     const port = w.port!;

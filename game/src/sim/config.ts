@@ -55,7 +55,7 @@ export const CFG = {
     fieldInstallMult: 2,
     pickupRange: 0.8,
     workbenchRange: 1.7,
-    dropChance: { guard: 0.3, officer: 0.55 },
+    dropChance: { guard: 0.3, officer: 0.55, drone: 0.08 },
     rerollBase: 10,
     rerollStep: 10,
     burnTime: 3,
@@ -68,4 +68,9 @@ export const CFG = {
     leech: 1.5,
   },
   threat: { max: 5, decayEvery: 25, raiseCooldown: 5 },
+  /**
+   * Hunter drones: from this threat level, drones spawn out of sight and chase ECHO.
+   * Up to (threat − 1) alive at once; spawning speeds up as threat climbs. None during a Compile siege.
+   */
+  hunters: { fromThreat: 2, every: 10, minDist: 7, maxDist: 13 },
 } as const;

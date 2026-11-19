@@ -9,7 +9,7 @@
 
 - **Sci-Fi Essentials Kit (Standard)** by [Quaternius](https://quaternius.com), CC0 1.0 Universal.
   Source: https://quaternius.itch.io/sci-fi-essentials-kit
-  The animated QuadShell robot (ECHO's SCRAPPER body) and its textures live in `game/public/models/essentials/`, with the original licence text.
+  The animated QuadShell robot (ECHO's SCRAPPER body), the EyeDrone (hunter drones) and its textures live in `game/public/models/essentials/`, with the original licence text.
   Re-create with `python3 scripts/import-essentials.py <zip>`.
 
 - **Universal Base Characters (Standard)** and **Universal Animation Library (Standard)** by [Quaternius](https://quaternius.com), CC0 1.0 Universal.
