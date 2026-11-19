@@ -3,7 +3,9 @@ import { TILE } from '../grid';
 import { moveCircle } from '../movement';
 import { POUNCE } from '../versions';
 import { center, dist, type Input, type World } from '../world';
+import { rank } from '../upgrades';
 import { landPounce } from './actions';
+import { damageGuard, stunGuard } from './guards';
 
 /** Movement, facing, hazards, footstep noise and Power regeneration. */
 export function updatePlayer(w: World, dt: number, input: Input): void {
@@ -30,6 +32,7 @@ export function updatePlayer(w: World, dt: number, input: Input): void {
     moveCircle(w.grid, p, p.dash.dx * k, p.dash.dy * k, v.radius, w.mover);
     p.dash.t += dt;
     p.moving = true;
+    arcDash(w);
     if (p.dash.t >= CFG.dash.duration) p.dash = null;
   } else if (p.pounce) {
     const k = Math.min(dt, POUNCE.duration - p.pounce.t) / POUNCE.duration;
@@ -92,10 +95,34 @@ function startDash(w: World, mx: number, my: number): void {
   const len = Math.hypot(mx, my);
   const a = len > 0.1 ? Math.atan2(my, mx) : p.facing;
   p.power -= CFG.dash.cost;
-  p.dashCooldown = CFG.dash.cooldown * (1 - p.build.mods.cooldown);
-  p.dash = { dx: Math.cos(a) * CFG.dash.distance, dy: Math.sin(a) * CFG.dash.distance, t: 0 };
+  const phase = rank(w, 'phase_dash');
+  p.dashCooldown = CFG.dash.cooldown * (1 - 0.2 * phase) * (1 - p.build.mods.cooldown);
+  const reach = CFG.dash.distance + 0.4 * phase;
+  p.dash = { dx: Math.cos(a) * reach, dy: Math.sin(a) * reach, t: 0, hit: [] };
   w.emit({ type: 'dash', x: p.x, y: p.y, facing: a });
   if (!p.inVent) w.emitNoise(p.x, p.y, CFG.dash.noiseRadius * (1 - p.build.mods.quiet));
+}
+
+/** ARC DASH card: enemies ECHO dashes through are stunned; drones short out. */
+function arcDash(w: World): void {
+  const p = w.player;
+  const r = rank(w, 'shock_dash');
+  if (!p.dash || r === 0) return;
+  for (const g of w.guards) {
+    if (g.state === 'down' || p.dash.hit.includes(g.id) || dist(p, g) > 0.75) continue;
+    p.dash.hit.push(g.id);
+    if (g.kind === 'drone') damageGuard(w, g, 1);
+    else stunGuard(g, 0.8 * r * (1 + p.build.mods.stun));
+    w.emit({ type: 'stun', x: g.x, y: g.y });
+  }
+}
+
+/** Power damage to ECHO from bullets and tasers; HARDENED PLATING reduces it. */
+export function hurtPlayer(w: World, amount: number): number {
+  const taken = amount * (1 - 0.15 * rank(w, 'plating'));
+  w.player.power -= taken;
+  w.player.hitFlash = 0.2;
+  return taken;
 }
 
 /** True while ECHO is mid-dash and cannot be hit. */

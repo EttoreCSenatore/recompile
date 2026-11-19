@@ -6,7 +6,8 @@ import { moveCircle } from '../movement';
 import { findPath } from '../pathfinding';
 import { center, dist, type Guard, type World } from '../world';
 import { dropModule } from './loadout';
-import { dodging } from './player';
+import { dodging, hurtPlayer } from './player';
+import { gainXp, rank } from '../upgrades';
 
 /**
  * Human AI: patrol → suspicious → investigate → alert, plus stun, death,
@@ -14,10 +15,16 @@ import { dodging } from './player';
  */
 export function updateGuards(w: World, dt: number): void {
   const p = w.player;
-  const speedMul = 1 + (w.threat - 1) * 0.06;
+  const baseMul = 1 + (w.threat - 1) * 0.06;
   for (const g of w.guards) {
     g.hitFlash = Math.max(0, g.hitFlash - dt);
     if (g.state === 'down') continue;
+    const speedMul = baseMul * ENEMIES[g.kind].speed;
+    if (g.hunter) {
+      // Drones track ECHO's signal: they always know where it is (unless it hides in a vent).
+      if (!p.inVent) g.lastSeen = { x: p.x, y: p.y };
+      g.lostSight = 0;
+    }
     if (g.state === 'stunned') {
       g.stunTimer -= dt;
       if (g.stunTimer <= 0) {
@@ -125,6 +132,7 @@ function alertStep(w: World, g: Guard, dt: number, speedMul: number, sees: boole
     g.lostSight += dt;
     moveGuardTo(w, g, g.lastSeen, speed, dt);
     if (g.lostSight >= CFG.guard.loseSightAfter) {
+      gainXp(w, 'escape');
       g.suspicion = 0.6;
       g.siege = false;
       investigate(w, g, g.lastSeen);
@@ -174,11 +182,10 @@ function siegeStep(w: World, g: Guard, dt: number, speedMul: number, sees: boole
 function zapPlayer(w: World, dps: number, dt: number): void {
   const p = w.player;
   if (dodging(w)) return;
-  p.power -= dps * dt;
-  p.hitFlash = 0.15;
+  const taken = hurtPlayer(w, dps * dt);
   if (Math.floor(w.time * 4) !== Math.floor((w.time - dt) * 4)) {
     w.emit({ type: 'zap', x: p.x, y: p.y });
-    w.emit({ type: 'hurt', x: p.x, y: p.y, amount: dps / 4 });
+    w.emit({ type: 'hurt', x: p.x, y: p.y, amount: (taken / dt) / 4 });
   }
 }
 
@@ -218,6 +225,11 @@ export function damageGuard(w: World, g: Guard, damage: number, source: 'hit' | 
     g.burn = 0;
     w.stats.kills++;
     w.emit({ type: 'kill', x: g.x, y: g.y });
+    onTakedown(w, g);
+    if (g.kind === 'drone') {
+      w.log(`> ${g.name} destroyed.`, 'good');
+      return;
+    }
     w.player.scrap += CFG.guard.salvage;
     w.log(`> ${g.name} neutralised. +${CFG.guard.salvage} SCRAP salvaged from gear.`, 'warn');
     w.emitNoise(g.x, g.y, 3);
@@ -227,6 +239,23 @@ export function damageGuard(w: World, g: Guard, damage: number, source: 'hit' | 
   if (source === 'hit' && g.state !== 'alert' && g.state !== 'stunned') {
     g.lastSeen = { x: w.player.x, y: w.player.y };
     goAlert(w, g);
+  }
+}
+
+/** XP, POWER LEECH and DISCHARGE NOVA on every takedown. */
+function onTakedown(w: World, g: Guard): void {
+  gainXp(w, g.kind);
+  const p = w.player;
+  const leech = rank(w, 'leech');
+  if (leech > 0) p.power = Math.min(w.maxPower, p.power + 4 * leech);
+  const nova = rank(w, 'nova');
+  if (nova === 0) return;
+  const radius = 1.6 + 0.6 * nova;
+  w.emit({ type: 'stun', x: g.x, y: g.y });
+  for (const o of w.guards) {
+    if (o === g || o.state === 'down' || o.state === 'stunned' || dist(o, g) > radius) continue;
+    if (o.kind === 'drone') damageGuard(w, o, 1);
+    else stunGuard(o, 1.2 * (1 + p.build.mods.stun));
   }
 }
 
@@ -245,6 +274,7 @@ export function goAlert(w: World, g: Guard): void {
   g.suspicion = 1;
   g.lostSight = 0;
   g.pathGoal = null;
+  if (g.hunter) return;
   w.stats.detections++;
   w.bark(g, '"THERE IT IS! Rogue unit spotted!"', 'danger', true);
   w.raiseThreat();
@@ -293,7 +323,7 @@ function patrolStep(w: World, g: Guard, dt: number, speedMul: number): void {
 }
 
 function waterMul(w: World, g: Guard): number {
-  return w.isWater(g) ? CFG.water.guardSlow : 1;
+  return g.kind !== 'drone' && w.isWater(g) ? CFG.water.guardSlow : 1;
 }
 
 /** Moves a guard along an A* path towards `goal`. Returns true once it has arrived. */

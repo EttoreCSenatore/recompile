@@ -12,6 +12,7 @@ const sidebars: SidebarsConfig = {
         'design/core-loop',
         'design/resources',
         'design/modules',
+        'design/learning',
         'design/versions',
         'design/alignment',
         'design/enemies',

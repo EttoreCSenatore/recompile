@@ -1,6 +1,7 @@
 import { CFG } from '../sim/config';
 import { interactionHint } from '../sim/systems/actions';
 import { defOf, RARITY_INFO } from '../sim/modules';
+import { xpToNext } from '../sim/upgrades';
 import type { LogLevel, World } from '../sim/world';
 import type { MenuModel } from './menu';
 
@@ -44,6 +45,8 @@ export class Hud {
   private readonly stunCd = $('stun-cd');
   private readonly seed = $('seed');
   private readonly modules = $('modules');
+  private readonly xpLevel = $('xp-level');
+  private readonly xpFill = $('xp-fill');
 
   reset(seed: number): void {
     this.logEl.replaceChildren();
@@ -67,6 +70,8 @@ export class Hud {
     this.powerText.textContent = `${Math.ceil(p.power)}/${maxPower}`;
     this.power.classList.toggle('low', pct < 0.3);
     this.power.classList.toggle('charging', p.charging);
+    this.xpLevel.textContent = String(p.level);
+    this.xpFill.style.width = `${Math.min(100, (p.xp / xpToNext(p.level)) * 100).toFixed(1)}%`;
     this.data.textContent = String(p.data);
     this.scrap.textContent = String(p.scrap);
     const v = p.version;

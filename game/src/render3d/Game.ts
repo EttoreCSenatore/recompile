@@ -137,6 +137,7 @@ export class Game {
 
   private closeMenu(): void {
     if (this.menuKind === 'port' && this.world.port) return; // must confirm the port first
+    if (this.menuKind === 'levelup' && this.world.player.cardOffer) return; // must pick a card
     this.setMode('playing');
   }
 
@@ -151,10 +152,11 @@ export class Game {
   private afterMenuAction(): void {
     this.flushEvents();
     if (this.mode !== 'menu') return;
-    if (this.menuKind === 'port' && !this.world.port) {
+    if ((this.menuKind === 'port' && !this.world.port) || (this.menuKind === 'levelup' && !this.world.player.cardOffer)) {
       this.setMode('playing');
       return;
     }
+    if (this.menuKind === 'levelup') this.menuIndex = 0; // a fresh offer for the next queued level
     const model = this.menu();
     this.menuIndex = Math.min(this.menuIndex, model.rows.length - 1);
     this.hud.showMenu(model, this.menuIndex, (i) => this.pickRow(i));
@@ -164,6 +166,13 @@ export class Game {
     if (k.close) {
       this.closeMenu();
       return;
+    }
+    if (this.menuKind === 'levelup') {
+      const digit = ['Digit1', 'Digit2', 'Digit3'].findIndex((d) => this.take(d));
+      if (digit >= 0) {
+        this.pickRow(digit);
+        return;
+      }
     }
     const model = this.menu();
     const n = model.rows.length;
@@ -261,7 +270,7 @@ export class Game {
       this.pressed.delete('KeyQ');
       this.pressed.delete('Space');
     }
-    if (this.mode !== 'menu') for (const k of ['ArrowUp', 'ArrowDown', 'KeyW', 'KeyS', 'KeyX']) this.pressed.delete(k);
+    if (this.mode !== 'menu') for (const k of ['ArrowUp', 'ArrowDown', 'KeyW', 'KeyS', 'KeyX', 'Digit1', 'Digit2', 'Digit3']) this.pressed.delete(k);
     if (this.mode !== 'playing' && this.mode !== 'menu') this.pressed.delete('KeyE');
   }
 
@@ -279,6 +288,7 @@ export class Game {
     this.flushEvents();
     if (this.world.status !== 'playing') this.setMode('over');
     else if (this.world.port) this.openMenu('port');
+    else if (this.world.player.cardOffer) this.openMenu('levelup');
   }
 
   private readInput(): Input {

@@ -10,6 +10,7 @@ from PIL import Image
 
 PIECES = [
     'Enemy_QuadShell',  # animated quadruped robot: ECHO's SCRAPPER body
+    'Enemy_EyeDrone',  # animated flying drone: hunter drones
     'Prop_Crate', 'Prop_Crate_Tarp', 'Prop_Barrel2_Closed', 'Prop_Locker', 'Prop_Shelves_WideShort',
     'Prop_Ammo_Closed',  # map dressing (desks and chairs need a texture the free zip lacks)
 ]

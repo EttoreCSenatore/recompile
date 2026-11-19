@@ -36,6 +36,8 @@ export class Kit {
   private readonly parts = new Map<PieceName, Part[]>();
   /** Animated SCRAPPER body from the Essentials Kit; null if it failed to load (the renderer then draws legs from cylinders). */
   quad: GLTF | null = null;
+  /** Animated EyeDrone for hunter drones; null if it failed to load. */
+  drone: GLTF | null = null;
   /** Rigged human bodies and shared animation clips (Universal Base Characters + Animation Library); null if they failed to load. */
   humans: { male: GLTF; female: GLTF; clips: THREE.AnimationClip[] } | null = null;
 
@@ -60,6 +62,10 @@ export class Kit {
     // The robot is optional: a failure here must not lose the environment pieces.
     kit.quad = await loader.loadAsync(`${import.meta.env.BASE_URL}models/essentials/Enemy_QuadShell.gltf`).catch((e) => {
       console.warn('QuadShell failed to load; using procedural SCRAPPER', e);
+      return null;
+    });
+    kit.drone = await loader.loadAsync(`${import.meta.env.BASE_URL}models/essentials/Enemy_EyeDrone.gltf`).catch((e) => {
+      console.warn('EyeDrone failed to load; using procedural drones', e);
       return null;
     });
     const chars = `${import.meta.env.BASE_URL}models/characters/`;

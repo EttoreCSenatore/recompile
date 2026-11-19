@@ -282,6 +282,36 @@ body::after {
   background: #ffd447;
 }
 
+#xp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#xp .label {
+  color: #ffd447;
+}
+
+#xp .bar {
+  width: 120px;
+  height: 6px;
+  border: 1px solid #6b5a1e;
+  background: #14110a;
+}
+
+#xp-fill {
+  height: 100%;
+  width: 0;
+  background: #ffd447;
+  transition: width 0.2s ease-out;
+}
+
+/* Gold flash on level-up. */
+body.levelup::before {
+  background: rgb(255, 212, 71);
+  animation: flash 0.5s ease-out;
+}
+
 #version {
   margin-left: auto;
   opacity: 0.7;

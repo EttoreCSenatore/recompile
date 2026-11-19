@@ -73,6 +73,8 @@ interface GuardAnim {
   py: number;
 }
 
+const dist2 = (a: { x: number; y: number }, b: { x: number; y: number }): number => Math.hypot(a.x - b.x, a.y - b.y);
+
 const ud0 = (m: THREE.Object3D): boolean => !!(m.userData as { anim?: GuardAnim | null }).anim;
 
 const GUARD_CONE: Record<GuardState, [number, number]> = {
@@ -688,12 +690,55 @@ export class Renderer3D {
     return { body, suit, anim: { mixer, actions, current: '', px: g.x, py: g.y } };
   }
 
+  /** Hunter drone: the animated EyeDrone, or a glowing sphere with an eye if the model isn't loaded. */
+  private makeDroneBody(): { body: THREE.Group; tint: (color: number, intensity: number) => void; anim: GuardAnim | null } {
+    const body = new THREE.Group();
+    const mats: THREE.MeshStandardMaterial[] = [];
+    let anim: GuardAnim | null = null;
+    const src = this.kit?.drone;
+    if (src) {
+      const model = cloneSkinned(src.scene);
+      model.scale.setScalar(0.5);
+      model.rotation.y = Math.PI / 2; // faces +z in the file; our facing axis is +x
+      model.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (!m.isMesh) return;
+        m.frustumCulled = false;
+        m.material = (m.material as THREE.MeshStandardMaterial).clone();
+        mats.push(m.material as THREE.MeshStandardMaterial);
+      });
+      body.add(model);
+      const mixer = new THREE.AnimationMixer(model);
+      const actions: Record<string, THREE.AnimationAction> = {};
+      for (const clip of src.animations) actions[clip.name] = mixer.clipAction(clip);
+      anim = { mixer, actions, current: '', px: 0, py: 0 };
+    } else {
+      const shell = mat(0x2a3138, 0x000000, 0.5);
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), shell);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), mat(C.red, C.red, 2));
+      eye.position.x = 0.2;
+      body.add(ball, eye);
+      mats.push(shell);
+    }
+    shadowed(body);
+    const tint = (color: number, intensity: number) =>
+      mats.forEach((m) => {
+        m.emissive.set(color);
+        m.emissiveIntensity = intensity;
+      });
+    return { body, tint, anim };
+  }
+
   private makeGuard(g: Guard): THREE.Group {
     const grp = new THREE.Group();
-    const human = this.makeHumanGuard(g);
+    const drone = g.kind === 'drone' ? this.makeDroneBody() : null;
+    const human = drone ? null : this.makeHumanGuard(g);
     let body: THREE.Group;
     let tint: (color: number, intensity: number) => void;
-    if (human) {
+    if (drone) {
+      body = drone.body;
+      tint = drone.tint;
+    } else if (human) {
       body = human.body;
       tint = (color, intensity) => {
         human.suit.emissive.set(color);
@@ -736,7 +781,7 @@ export class Renderer3D {
     };
     bars.rotation.x = -CAM_PITCH;
     grp.add(bars);
-    grp.userData = { body, tint, anim: human?.anim ?? null, sus: bar(C.amber, 1.55), hp: bar(C.red, 1.7), bars };
+    grp.userData = { body, tint, anim: human?.anim ?? drone?.anim ?? null, sus: bar(C.amber, 1.55), hp: bar(C.red, 1.7), bars };
     return grp;
   }
 
@@ -806,6 +851,17 @@ export class Renderer3D {
       case 'dash':
         this.dashTrail(e.x, e.y, e.facing);
         break;
+      case 'xp':
+        this.ringFx(e.x, e.y, 0.6, 0.3, 0xffd447);
+        break;
+      case 'levelup': {
+        const p = this.world.player;
+        this.ringFx(p.x, p.y, 3.2, 0.7, 0xffd447);
+        this.ringFx(p.x, p.y, 2.0, 0.5, C.white);
+        this.pulseClass('levelup');
+        this.addShake(0.2);
+        break;
+      }
       case 'slash': {
         const geo = new THREE.RingGeometry(e.range - 0.06, e.range, 20, 1, -0.9, 1.8);
         const mesh = new THREE.Mesh(geo, basic(C.white, 0.9));
@@ -993,7 +1049,9 @@ export class Renderer3D {
       }
       const visible = this.tileSeen(g.x, g.y);
       m.visible = visible;
-      m.position.set(g.x, g.state === 'down' && !ud0(m) ? 0.2 : 0, g.y);
+      const isDrone = g.kind === 'drone';
+      if (isDrone && g.state === 'down') m.visible = false; // wreck vanishes in the kill burst
+      m.position.set(g.x, isDrone ? 0.6 + Math.sin(now / 180 + g.id) * 0.08 : g.state === 'down' && !ud0(m) ? 0.2 : 0, g.y);
       const ud = m.userData as {
         body: THREE.Group;
         tint: (color: number, intensity: number) => void;
@@ -1003,15 +1061,15 @@ export class Renderer3D {
       };
       // Only the body turns; the status bars keep facing the camera.
       // Humans play a death animation; the procedural body just tips over.
-      ud.body.rotation.set(0, -g.facing, g.state === 'down' && !ud.anim ? Math.PI / 2 : 0);
+      ud.body.rotation.set(0, -g.facing, g.state === 'down' && !ud.anim && !isDrone ? Math.PI / 2 : 0);
       const flash = g.hitFlash > 0;
       ud.tint(flash ? C.white : g.state === 'alert' ? C.red : g.state === 'stunned' ? C.blue : 0x000000, flash ? 1 : 0.5);
-      if (ud.anim && visible) this.animateGuard(g, ud.anim);
+      if (ud.anim && m.visible) this.animateGuard(g, ud.anim);
       const showSus = g.suspicion > 0.02 && g.state !== 'alert' && g.state !== 'stunned' && g.state !== 'down';
       this.setBar(ud.sus, showSus, g.suspicion);
       this.setBar(ud.hp, g.hp < g.maxHp && g.state !== 'down', g.hp / g.maxHp);
       const [color, opacity] = GUARD_CONE[g.state];
-      this.updateCone(`g${g.id}`, g.x, g.y, g.facing, CFG.guard.fov, CFG.guard.range, color, visible ? opacity : 0);
+      this.updateCone(`g${g.id}`, g.x, g.y, g.facing, CFG.guard.fov, CFG.guard.range, color, visible && !isDrone ? opacity : 0);
     }
     for (const [id, m] of this.guards) {
       if (!seen.has(id)) {
@@ -1126,7 +1184,8 @@ export class Renderer3D {
     const moving = this.dt > 0 && moved / this.dt > 0.4;
     const officer = g.kind === 'officer';
     let want: string;
-    if (g.state === 'down') want = 'Death01';
+    if (g.kind === 'drone') want = g.state === 'stunned' ? 'Hit' : dist2(g, this.world.player) < 1.4 ? 'Attack' : 'Idle';
+    else if (g.state === 'down') want = 'Death01';
     else if (g.state === 'stunned') want = 'Hit_Chest';
     else if (g.state === 'alert') want = moving ? 'Jog_Fwd_Loop' : officer ? 'Pistol_Idle_Loop' : 'Idle_Loop';
     else if (g.state === 'suspicious' || g.state === 'investigate') want = moving ? 'Walk_Loop' : 'Idle_Torch_Loop';
@@ -1134,7 +1193,7 @@ export class Renderer3D {
     const next = a.actions[want];
     if (next && want !== a.current) {
       next.reset();
-      if (want === 'Death01' || want === 'Hit_Chest') {
+      if (want === 'Death01' || want === 'Hit_Chest' || want === 'Hit') {
         next.setLoop(THREE.LoopOnce, 1);
         next.clampWhenFinished = true;
       } else next.setLoop(THREE.LoopRepeat, Infinity);

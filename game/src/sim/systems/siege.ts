@@ -2,6 +2,7 @@ import { CFG } from '../config';
 import { VERSIONS } from '../versions';
 import { center, type World } from '../world';
 import { beginPort } from './loadout';
+import { gainXp } from '../upgrades';
 
 /** Starts the Compile siege. Resources are only spent if the Compile succeeds. */
 export function startCompile(w: World): boolean {
@@ -73,6 +74,7 @@ function completeCompile(w: World): void {
   w.stats.compiles++;
   releaseSiegeGuards(w);
   w.emit({ type: 'compiled', version: next.id });
+  gainXp(w, 'compile');
   const v = p.version;
   w.log('> COMPILE COMPLETE.', 'good');
   w.log(`> booting ECHO-7 ${v.id} ${v.codename} ... max power ${v.maxPower} · claws ONLINE · vents: chassis too large`, 'good');
