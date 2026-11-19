@@ -88,7 +88,7 @@ export const MODULES: Record<string, ModuleDef> = Object.fromEntries(
     m({ id: 'script_kit', name: 'Script Kit', slot: 'cpu', rarity: 'salvaged', tags: ['VIRAL'], mods: { hackSpeed: 0.25 }, note: 'Pre-written exploits for old firmware.' }),
     m({ id: 'worm_loader', name: 'Worm Loader', slot: 'cpu', rarity: 'military', tags: ['VIRAL', 'EMP'], mods: { hackSpeed: 0.4, cooldown: 0.1 }, note: 'Hacks leave something behind.' }),
     m({ id: 'surge_regulator', name: 'Surge Regulator', slot: 'cpu', rarity: 'military', tags: ['EMP'], mods: { regen: 0.6, stun: 0.25 }, note: 'Smooths the power rails, lengthens shocks.' }),
-    m({ id: 'overclocked_core', name: 'Overclocked Core', slot: 'cpu', rarity: 'anomalous', tags: ['THERMAL'], mods: { cooldown: 0.35, hackSpeed: 0.3, heat: 0.6 }, note: 'Drawback: runs hot and bleeds Power.' }),
+    m({ id: 'overclocked_core', name: 'Overclocked Core', slot: 'cpu', rarity: 'anomalous', tags: ['THERMAL'], mods: { cooldown: 0.35, hackSpeed: 0.3, heat: 1.4 }, note: 'Drawback: runs hot and bleeds Power.' }),
     // Chassis
     m({ id: 'ceramic_plating', name: 'Ceramic Plating', slot: 'chassis', rarity: 'salvaged', tags: [], mods: { maxPower: 0.2, speed: -0.1 }, note: 'Heavy, but it holds a charge.' }),
     m({ id: 'capacitor_bank', name: 'Capacitor Bank', slot: 'chassis', rarity: 'military', tags: ['EMP'], mods: { maxPower: 0.35, regen: 0.3 }, note: 'Stores a lot of lightning.' }),

@@ -169,6 +169,9 @@ export interface Player {
   interact: { target: InteractTarget; progress: number; duration: number; noiseTimer: number } | null;
   interactLatch: boolean;
   pounce: { dx: number; dy: number; t: number } | null;
+  /** Short burst of speed with brief invulnerability (bullets and tasers miss). */
+  dash: { dx: number; dy: number; t: number } | null;
+  dashCooldown: number;
   hitFlash: number;
 }
 
@@ -181,6 +184,10 @@ export type GameEvent =
   | { type: 'zap'; x: number; y: number }
   | { type: 'slash'; x: number; y: number; facing: number; range: number }
   | { type: 'hit'; x: number; y: number }
+  /** ECHO took damage (bullet or taser); `amount` is Power lost. */
+  | { type: 'hurt'; x: number; y: number; amount: number }
+  | { type: 'kill'; x: number; y: number }
+  | { type: 'dash'; x: number; y: number; facing: number }
   | { type: 'shot'; x: number; y: number; tx: number; ty: number }
   | { type: 'compiled'; version: VersionId }
   | { type: 'pickup'; x: number; y: number }
@@ -198,6 +205,8 @@ export interface Input {
   attack: boolean;
   /** True only on the step the ability key was pressed. */
   ability: boolean;
+  /** True only on the step the dash key was pressed. */
+  dash: boolean;
 }
 
 export type Status = 'playing' | 'dead' | 'escaped';
@@ -210,6 +219,7 @@ export const NO_INPUT: Input = {
   interact: false,
   attack: false,
   ability: false,
+  dash: false,
 };
 
 export interface WorldOptions {
@@ -280,6 +290,8 @@ export class World {
       interact: null,
       interactLatch: false,
       pounce: null,
+      dash: null,
+      dashCooldown: 0,
       hitFlash: 0,
     };
     this.loadLevel(options.startLevel ?? 'lab');
@@ -323,7 +335,7 @@ export class World {
     this.grid = level.grid;
     this.rng = mulberry32((this.seed + index * 7919) >>> 0);
     const start = center(level.playerStart);
-    Object.assign(this.player, { ...start, interact: null, pounce: null, inVent: false });
+    Object.assign(this.player, { ...start, interact: null, pounce: null, dash: null, inVent: false });
     this.guards = [];
     level.guards.forEach((def) => {
       const routeIndex = Math.floor(this.rng() * def.route.length);

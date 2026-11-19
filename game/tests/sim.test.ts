@@ -393,3 +393,54 @@ describe('the Undercity (act 1)', () => {
     expect(w.status).toBe('escaped');
   });
 });
+
+describe('pacing mechanics', () => {
+  it('dash bursts ECHO forward, costs Power and has a cooldown', () => {
+    const w = new World(3);
+    quiet(w);
+    Object.assign(w.player, { x: 10.5, y: 10.5 });
+    w.grid.fill(8, 8, 8, 5, TILE.FLOOR); // make sure the lane is open
+    const power = w.player.power;
+    w.step(1 / 60, { ...NO_INPUT, moveX: 1, dash: true });
+    run(w, CFG.dash.duration + 0.05);
+    expect(w.player.x).toBeGreaterThan(10.5 + CFG.dash.distance * 0.9);
+    expect(w.player.power).toBeLessThan(power);
+    expect(w.player.dashCooldown).toBeGreaterThan(0);
+    const x = w.player.x;
+    w.step(1 / 60, { ...NO_INPUT, dash: true }); // still cooling down: no second dash
+    expect(w.player.dash).toBeNull();
+    expect(w.player.x).toBe(x);
+  });
+
+  it('bullets pass through ECHO mid-dash', () => {
+    const w = new World(3);
+    quiet(w);
+    Object.assign(w.player, { x: 10.5, y: 10.5, dash: { dx: 0, dy: 0, t: 0 } });
+    w.projectiles.push({ x: 10.5, y: 10.5, vx: 0, vy: 0, ttl: 0.1, damage: 5 });
+    const power = w.player.power;
+    w.step(1 / 60, NO_INPUT);
+    expect(w.player.power).toBeGreaterThanOrEqual(power - 0.1);
+  });
+
+  it('claw hits knock guards back', () => {
+    const w = new World(2, { version: 'v1' });
+    const guard = w.guards[0]!;
+    for (const g of w.guards.slice(1)) freeze(g);
+    Object.assign(w.player, { x: guard.x - 0.9, y: guard.y });
+    const before = dist(w.player, guard);
+    w.step(1 / 60, { ...NO_INPUT, attack: true, aim: { x: guard.x, y: guard.y } });
+    expect(guard.hp).toBe(guard.maxHp - 1);
+    expect(dist(w.player, guard)).toBeGreaterThan(before + 0.1);
+  });
+
+  it('chasing guards never walk into walls', () => {
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const w = new World(seed, { version: 'v1' });
+      for (const c of w.cameras) c.disabled = true;
+      for (const g of w.guards) Object.assign(g, { state: 'alert', suspicion: 1 });
+      // Run around in circles for a while so guards chase around corners.
+      run(w, 8, (world) => ({ ...NO_INPUT, moveX: Math.cos(world.time * 1.5), moveY: Math.sin(world.time * 1.5) }));
+      for (const g of w.guards) expect(w.grid.walkable(Math.floor(g.x), Math.floor(g.y), 'guard')).toBe(true);
+    }
+  });
+});

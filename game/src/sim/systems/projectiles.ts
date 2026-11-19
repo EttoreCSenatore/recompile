@@ -1,4 +1,5 @@
 import type { World } from '../world';
+import { dodging } from './player';
 
 const SUBSTEPS = 4;
 
@@ -13,10 +14,10 @@ export function updateProjectiles(w: World, dt: number): void {
       b.x += (b.vx * dt) / SUBSTEPS;
       b.y += (b.vy * dt) / SUBSTEPS;
       if (w.grid.opaque(Math.floor(b.x), Math.floor(b.y))) return false;
-      if (!p.inVent && Math.hypot(b.x - p.x, b.y - p.y) < hitR) {
+      if (!p.inVent && !dodging(w) && Math.hypot(b.x - p.x, b.y - p.y) < hitR) {
         p.power -= b.damage;
         p.hitFlash = 0.2;
-        w.emit({ type: 'hit', x: p.x, y: p.y });
+        w.emit({ type: 'hurt', x: p.x, y: p.y, amount: b.damage });
         return false;
       }
     }

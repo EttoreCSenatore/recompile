@@ -22,6 +22,6 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
     kind: 'officer',
     hp: 3,
     melee: null,
-    ranged: { range: 6, aimTime: 0.45, cooldown: 1.3, bulletSpeed: 9, damage: 7 },
+    ranged: { range: 6.5, aimTime: 0.4, cooldown: 1.1, bulletSpeed: 11, damage: 6 },
   },
 };
