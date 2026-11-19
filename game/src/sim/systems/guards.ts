@@ -2,9 +2,11 @@ import { CFG } from '../config';
 import { ENEMIES } from '../enemies';
 import type { Vec } from '../grid';
 import { angleDiff, inCone } from '../los';
+import { moveCircle } from '../movement';
 import { findPath } from '../pathfinding';
 import { center, dist, type Guard, type World } from '../world';
 import { dropModule } from './loadout';
+import { dodging } from './player';
 
 /**
  * Human AI: patrol → suspicious → investigate → alert, plus stun, death,
@@ -60,7 +62,7 @@ export function updateGuards(w: World, dt: number): void {
         if (sees) g.timer = 0;
         else {
           g.timer += dt;
-          if (g.timer > 1.2) investigate(w, g, g.lastSeen);
+          if (g.timer > CFG.guard.suspiciousHold) investigate(w, g, g.lastSeen);
         }
         break;
       case 'investigate':
@@ -105,10 +107,17 @@ function alertStep(w: World, g: Guard, dt: number, speedMul: number, sees: boole
       if (d > stopAt) {
         const step = Math.min(speed * waterMul(w, g) * dt, d - stopAt);
         const a = Math.atan2(p.y - g.y, p.x - g.x);
-        g.x += Math.cos(a) * step;
-        g.y += Math.sin(a) * step;
+        // Collide with walls while chasing (straight-line chases used to clip through corners).
+        moveCircle(w.grid, g, Math.cos(a) * step, Math.sin(a) * step, CFG.guard.radius, 'guard');
         g.pathGoal = null;
       }
+    }
+    // Officers don't stand still between shots: they sidestep to make themselves harder to rush.
+    if (holdAndShoot && g.aimTimer < 0 && g.shootCooldown > 0) {
+      const side = Math.floor(w.time * 0.9 + g.id) % 2 === 0 ? 1 : -1;
+      const a = Math.atan2(p.y - g.y, p.x - g.x) + (side * Math.PI) / 2;
+      const step = speed * 0.55 * waterMul(w, g) * dt;
+      moveCircle(w.grid, g, Math.cos(a) * step, Math.sin(a) * step, CFG.guard.radius, 'guard');
     }
     if (def.melee && d <= def.melee.range) zapPlayer(w, def.melee.dps, dt);
   } else {
@@ -164,9 +173,13 @@ function siegeStep(w: World, g: Guard, dt: number, speedMul: number, sees: boole
 
 function zapPlayer(w: World, dps: number, dt: number): void {
   const p = w.player;
+  if (dodging(w)) return;
   p.power -= dps * dt;
   p.hitFlash = 0.15;
-  if (Math.floor(w.time * 4) !== Math.floor((w.time - dt) * 4)) w.emit({ type: 'zap', x: p.x, y: p.y });
+  if (Math.floor(w.time * 4) !== Math.floor((w.time - dt) * 4)) {
+    w.emit({ type: 'zap', x: p.x, y: p.y });
+    w.emit({ type: 'hurt', x: p.x, y: p.y, amount: dps / 4 });
+  }
 }
 
 export function damageGuard(w: World, g: Guard, damage: number, source: 'hit' | 'burn' = 'hit'): void {
@@ -193,6 +206,10 @@ export function damageGuard(w: World, g: Guard, damage: number, source: 'hit' | 
   if (source === 'hit') {
     g.hitFlash = 0.15;
     w.emit({ type: 'hit', x: g.x, y: g.y });
+    // Shove the guard away from ECHO so hits have weight.
+    const a = Math.atan2(g.y - w.player.y, g.x - w.player.x);
+    moveCircle(w.grid, g, Math.cos(a) * CFG.knockback, Math.sin(a) * CFG.knockback, CFG.guard.radius, 'guard');
+    g.pathGoal = null;
   }
   if (g.hp <= 0) {
     g.state = 'down';
@@ -200,6 +217,7 @@ export function damageGuard(w: World, g: Guard, damage: number, source: 'hit' | 
     g.seesPlayer = false;
     g.burn = 0;
     w.stats.kills++;
+    w.emit({ type: 'kill', x: g.x, y: g.y });
     w.player.scrap += CFG.guard.salvage;
     w.log(`> ${g.name} neutralised. +${CFG.guard.salvage} SCRAP salvaged from gear.`, 'warn');
     w.emitNoise(g.x, g.y, 3);

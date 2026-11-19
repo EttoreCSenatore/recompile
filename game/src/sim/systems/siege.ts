@@ -77,7 +77,7 @@ function completeCompile(w: World): void {
   w.log('> COMPILE COMPLETE.', 'good');
   w.log(`> booting ECHO-7 ${v.id} ${v.codename} ... max power ${v.maxPower} · claws ONLINE · vents: chassis too large`, 'good');
   w.log('> empathy_module ............ LOADED', 'good');
-  w.log(`> [LMB / SPACE] ${v.attack?.name ?? ''} · [Q] ${v.ability.name} · Exit unlocked.`, 'good');
+  w.log(`> [LMB] ${v.attack?.name ?? ''} · [SPACE] DASH · [Q] ${v.ability.name} · Exit unlocked.`, 'good');
 }
 
 /** Siege attackers stop targeting the fabricator and hunt ECHO instead. */

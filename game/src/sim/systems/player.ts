@@ -11,6 +11,7 @@ export function updatePlayer(w: World, dt: number, input: Input): void {
   const v = p.version;
   p.abilityCooldown = Math.max(0, p.abilityCooldown - dt);
   p.attackCooldown = Math.max(0, p.attackCooldown - dt);
+  p.dashCooldown = Math.max(0, p.dashCooldown - dt);
   p.hitFlash = Math.max(0, p.hitFlash - dt);
   p.sneaking = input.sneak;
 
@@ -22,7 +23,15 @@ export function updatePlayer(w: World, dt: number, input: Input): void {
     my /= len;
   }
 
-  if (p.pounce) {
+  if (input.dash && !p.dash && !p.pounce && p.dashCooldown <= 0 && !p.interact) startDash(w, mx, my);
+
+  if (p.dash) {
+    const k = Math.min(dt, CFG.dash.duration - p.dash.t) / CFG.dash.duration;
+    moveCircle(w.grid, p, p.dash.dx * k, p.dash.dy * k, v.radius, w.mover);
+    p.dash.t += dt;
+    p.moving = true;
+    if (p.dash.t >= CFG.dash.duration) p.dash = null;
+  } else if (p.pounce) {
     const k = Math.min(dt, POUNCE.duration - p.pounce.t) / POUNCE.duration;
     moveCircle(w.grid, p, p.pounce.dx * k, p.pounce.dy * k, v.radius, w.mover);
     p.pounce.t += dt;
@@ -38,7 +47,7 @@ export function updatePlayer(w: World, dt: number, input: Input): void {
   }
 
   if (input.aim) p.facing = Math.atan2(input.aim.y - p.y, input.aim.x - p.x);
-  else if (!p.pounce && len > 0.1) p.facing = Math.atan2(my, mx);
+  else if (!p.pounce && !p.dash && len > 0.1) p.facing = Math.atan2(my, mx);
 
   const tile = w.grid.get(Math.floor(p.x), Math.floor(p.y));
   p.inVent = tile === TILE.VENT;
@@ -74,4 +83,22 @@ export function updatePlayer(w: World, dt: number, input: Input): void {
   else if (!w.anyAlert()) p.power += v.regen * (1 + p.build.mods.regen) * dt;
   if (p.inWater) p.power -= CFG.water.drain * dt;
   p.power = Math.min(w.maxPower, p.power);
+}
+
+/** Dash in the move direction (or facing, when standing still). Costs a little Power and makes some noise. */
+function startDash(w: World, mx: number, my: number): void {
+  const p = w.player;
+  if (p.power <= CFG.dash.cost) return;
+  const len = Math.hypot(mx, my);
+  const a = len > 0.1 ? Math.atan2(my, mx) : p.facing;
+  p.power -= CFG.dash.cost;
+  p.dashCooldown = CFG.dash.cooldown * (1 - p.build.mods.cooldown);
+  p.dash = { dx: Math.cos(a) * CFG.dash.distance, dy: Math.sin(a) * CFG.dash.distance, t: 0 };
+  w.emit({ type: 'dash', x: p.x, y: p.y, facing: a });
+  if (!p.inVent) w.emitNoise(p.x, p.y, CFG.dash.noiseRadius * (1 - p.build.mods.quiet));
+}
+
+/** True while ECHO is mid-dash and cannot be hit. */
+export function dodging(w: World): boolean {
+  return !!w.player.dash;
 }

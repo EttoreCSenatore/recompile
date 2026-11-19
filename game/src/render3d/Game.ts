@@ -10,6 +10,9 @@ const MOUSE_AIM_MS = 3000;
 /** Gamepad buttons (standard mapping). */
 const PAD = { A: 0, B: 1, X: 2, Y: 3, R1: 5, R2: 7, START: 9, L3: 10, UP: 12, DOWN: 13 } as const;
 
+/** Hit-stop: the simulation freezes for a few frames on impact so hits feel heavy. */
+const HIT_STOP = { hit: 0.045, kill: 0.09 } as const;
+
 type Mode = 'title' | 'playing' | 'paused' | 'over' | 'menu';
 
 export class Game {
@@ -18,6 +21,7 @@ export class Game {
   private readonly view: Renderer3D;
   private mode: Mode = 'title';
   private acc = 0;
+  private hitStop = 0;
   private last = performance.now();
   private frames = 0;
   private menuKind: MenuKind = 'loadout';
@@ -204,6 +208,7 @@ export class Game {
     const padUp = padEdge(PAD.UP);
     const padDown = padEdge(PAD.DOWN);
     if (padX && this.mode !== 'menu') this.pressed.add('KeyQ');
+    if (padConfirm && this.mode === 'playing') this.pressed.add('Space'); // A dashes in play (Enter-like only in menus)
     if (padY) this.pressed.add('KeyE');
 
     const enter = this.take('Enter') || padConfirm;
@@ -252,12 +257,19 @@ export class Game {
         break;
     }
     // The ability press stays queued until a simulation step consumes it; drop it outside gameplay.
-    if (this.mode !== 'playing') this.pressed.delete('KeyQ');
+    if (this.mode !== 'playing') {
+      this.pressed.delete('KeyQ');
+      this.pressed.delete('Space');
+    }
     if (this.mode !== 'menu') for (const k of ['ArrowUp', 'ArrowDown', 'KeyW', 'KeyS', 'KeyX']) this.pressed.delete(k);
     if (this.mode !== 'playing' && this.mode !== 'menu') this.pressed.delete('KeyE');
   }
 
   private simulate(dt: number): void {
+    if (this.hitStop > 0) {
+      this.hitStop = Math.max(0, this.hitStop - dt);
+      return;
+    }
     this.acc += dt;
     while (this.acc >= STEP) {
       this.acc -= STEP;
@@ -291,8 +303,9 @@ export class Game {
       aim,
       sneak: this.key('ShiftLeft', 'ShiftRight') || !!pad?.buttons[PAD.L3]?.pressed,
       interact: this.key('KeyF') || (pad?.buttons[PAD.R1]?.value ?? 0) > 0.5,
-      attack: this.key('Space') || this.mouseDown || (pad?.buttons[PAD.R2]?.value ?? 0) > 0.3,
+      attack: this.mouseDown || (pad?.buttons[PAD.R2]?.value ?? 0) > 0.3,
       ability: this.take('KeyQ'),
+      dash: this.take('Space'),
     };
   }
 
@@ -300,7 +313,11 @@ export class Game {
     for (const e of this.world.drainEvents()) {
       if (e.type === 'log') this.hud.log(e.text, e.level);
       else if (e.type === 'level') this.view.buildLevel();
-      else this.view.onEvent(e);
+      else {
+        if (e.type === 'hit') this.hitStop = Math.max(this.hitStop, HIT_STOP.hit);
+        if (e.type === 'kill') this.hitStop = Math.max(this.hitStop, HIT_STOP.kill);
+        this.view.onEvent(e);
+      }
     }
   }
 }

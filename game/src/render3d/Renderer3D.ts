@@ -257,6 +257,8 @@ export class Renderer3D {
   /** Rebuilds static geometry and props; call when a new sector loads. */
   buildLevel(): void {
     const w = this.world;
+    // Guard ids restart per level, so meshes from the previous level must not be reused.
+    this.clearDynamic();
     this.scene.remove(this.mapGroup);
     this.mapGroup.traverse((o) => {
       if (o instanceof THREE.InstancedMesh) o.dispose();
@@ -785,8 +787,24 @@ export class Renderer3D {
         this.ringFx(e.x, e.y, 1.3, 0.45, C.blue);
         break;
       case 'zap':
-      case 'hit':
         this.ringFx(e.x, e.y, 0.8, 0.3, C.red);
+        break;
+      case 'hit':
+        this.ringFx(e.x, e.y, 0.9, 0.25, C.white);
+        this.addShake(0.12);
+        break;
+      case 'kill':
+        this.ringFx(e.x, e.y, 1.8, 0.45, C.amber);
+        this.ringFx(e.x, e.y, 1.1, 0.3, C.white);
+        this.addShake(0.25);
+        break;
+      case 'hurt':
+        this.ringFx(e.x, e.y, 0.9, 0.3, C.red);
+        this.addShake(Math.min(0.3, 0.08 + e.amount * 0.02));
+        this.pulseClass('hurt');
+        break;
+      case 'dash':
+        this.dashTrail(e.x, e.y, e.facing);
         break;
       case 'slash': {
         const geo = new THREE.RingGeometry(e.range - 0.06, e.range, 20, 1, -0.9, 1.8);
@@ -808,13 +826,33 @@ export class Renderer3D {
         break;
       }
       case 'compiled':
-        document.body.classList.remove('flash');
-        void document.body.offsetWidth; // restart the CSS animation
-        document.body.classList.add('flash');
-        if (!REDUCED_MOTION) this.shake = 0.35;
+        this.pulseClass('flash');
+        this.addShake(0.35);
         break;
       default:
         break;
+    }
+  }
+
+  private addShake(amount: number): void {
+    if (!REDUCED_MOTION) this.shake = Math.max(this.shake, amount);
+  }
+
+  /** Restarts a one-shot CSS animation on <body> (compile flash, damage vignette). */
+  private pulseClass(name: string): void {
+    document.body.classList.remove(name);
+    void document.body.offsetWidth;
+    document.body.classList.add(name);
+  }
+
+  /** A fading streak of green ghosts behind a dash. */
+  private dashTrail(x: number, y: number, facing: number): void {
+    for (let i = 0; i < 4; i++) {
+      const ghost = new THREE.Mesh(new THREE.CircleGeometry(0.3, 16), basic(C.green, 0.35));
+      ghost.rotation.x = -Math.PI / 2;
+      ghost.position.set(x + Math.cos(facing) * i * 0.55, 0.07, y + Math.sin(facing) * i * 0.55);
+      const start = 0.35 - i * 0.06;
+      this.addFx(ghost, 0.22 + i * 0.03, (k) => ((ghost.material as THREE.MeshBasicMaterial).opacity = start * (1 - k)));
     }
   }
 
@@ -1170,13 +1208,16 @@ export class Renderer3D {
 
   private updateCamera(dt: number): void {
     const p = this.world.player;
-    this.camTarget.lerp(new THREE.Vector3(p.x, 0, p.y), 1 - Math.pow(0.001, dt));
+    // Lead the camera a little toward where ECHO faces, so you see what's coming.
+    const lead = p.moving ? 1.1 : 0.6;
+    const goal = new THREE.Vector3(p.x + Math.cos(p.facing) * lead, 0, p.y + Math.sin(p.facing) * lead);
+    this.camTarget.lerp(goal, 1 - Math.pow(0.0005, dt));
     const c = this.camera;
     c.position.set(this.camTarget.x, Math.sin(CAM_PITCH) * CAM_DIST, this.camTarget.z + Math.cos(CAM_PITCH) * CAM_DIST);
     if (this.shake > 0) {
       this.shake = Math.max(0, this.shake - dt);
-      c.position.x += (Math.random() - 0.5) * this.shake * 0.5;
-      c.position.y += (Math.random() - 0.5) * this.shake * 0.5;
+      c.position.x += (Math.random() - 0.5) * this.shake * 0.9;
+      c.position.y += (Math.random() - 0.5) * this.shake * 0.9;
     }
     c.lookAt(this.camTarget);
     this.sun.position.set(this.camTarget.x + 6, 14, this.camTarget.z + 4);

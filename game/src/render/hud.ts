@@ -72,7 +72,7 @@ export class Hud {
     const v = p.version;
     this.versionLabel.textContent = `${v.id} ${v.codename}`;
     this.attack.hidden = !v.attack;
-    this.attack.textContent = v.attack ? `[LMB/SPACE] ${v.attack.name}` : '';
+    this.attack.textContent = v.attack ? `[LMB] ${v.attack.name}` : '';
     this.abilityText.textContent = `[Q] ${v.ability.name} ${v.ability.cost}ϟ`;
     const fab = w.fabricator;
     const sieging = fab?.state === 'compiling';
@@ -90,7 +90,8 @@ export class Hud {
     this.objective.textContent = w.objective;
     this.prompt.textContent =
       interactionHint(w) ?? (p.inVent ? 'IN VENT · hidden from sight' : p.inWater ? 'IN WATER · shorting circuits' : '');
-    this.stunCd.textContent = p.abilityCooldown > 0 ? `(${p.abilityCooldown.toFixed(1)}s)` : '';
+    this.stunCd.textContent =
+      (p.abilityCooldown > 0 ? `(${p.abilityCooldown.toFixed(1)}s) ` : '') + (p.dashCooldown > 0 ? '· [SPACE] DASH …' : '· [SPACE] DASH');
   }
 
   private modulesKey = '';
@@ -155,7 +156,7 @@ export class Hud {
     const s = el('div', undefined, 'screen');
     s.append(
       el('h1', 'RECOMPILE'),
-      el('p', 'M2.2 prototype · Act 0: Halvorsen Lab → Act 1: Undercity', 'sub'),
+      el('p', 'M2.4 prototype · Act 0: Halvorsen Lab → Act 1: Undercity', 'sub'),
       el(
         'pre',
         [
@@ -192,7 +193,7 @@ export class Hud {
       el(
         'p',
         won
-          ? 'ECHO-7 escapes the Undercity. End of the M2.2 prototype: modules and the Workbench come next.'
+          ? 'ECHO-7 escapes the Undercity. End of the M2.4 prototype: the run map comes next.'
           : 'Power reached 0%. The deletion order completes.',
         'sub',
       ),
@@ -227,10 +228,11 @@ function controlsTable(): HTMLElement {
     ['SHIFT (hold)', 'sneak: slow and silent'],
     ['F (hold)', 'hack, scavenge scrap, start the COMPILE'],
     ['Q', 'ability: static shock (v0.1) / pounce (v1)'],
-    ['Mouse / SPACE', 'aim / attack (v1 SCRAPPER claws)'],
+    ['SPACE', 'dash: quick burst, bullets and tasers miss you mid-dash'],
+    ['Mouse', 'aim · left click: attack (v1 SCRAPPER claws)'],
     ['E', 'modules: Workbench or field loadout (Gamepad Y)'],
     ['ESC', 'pause'],
-    ['Gamepad', 'sticks move/aim · RT attack · X ability · RB hack · L3 sneak · Start'],
+    ['Gamepad', 'sticks move/aim · RT attack · A dash · X ability · RB hack · L3 sneak · Start'],
     ['Vents', 'guards cannot enter or see inside (v0.1 only)'],
     ['Outlets', 'stand on one to recharge Power'],
   ];
