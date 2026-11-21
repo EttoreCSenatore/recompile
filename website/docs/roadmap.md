@@ -15,6 +15,7 @@ Development is split into milestones. Each one ends with something **playable** 
 | **M2.2: Modules** | Module drops, slots, rarity, tags and set bonuses, Workbench, porting modules at the Compile | ✅ Done: [play it](pathname:///recompile/play/) |
 | **M2.3: Run structure** | Route map with 3 sectors per act, sectors assembled from chunks, run summary, suspend/resume saves (Zod-validated) | Planned |
 | **M2.4: Modern 3D view** | Move rendering from flat 2D to a 3D scene with an angled, Diablo-style camera; detailed character models, props and environments; lighting and shadows. The simulation stays untouched | ✅ Renderer ported to Three.js; Phaser removed. Models, lighting and art still to polish |
+| **M2.5: Foundations** | Project practices adapted from Kaladrius: licence, contributor docs, versions and an in-game "What's new", decision log, glossary, pinned CI, docs parity, game UI in EN + PT-BR, playtest flags. See [Project Practices](./technical/project-practices.md) | ⏳ Next (proposed) |
 | **M3: Living humans** | Threat level, Adaptive Director, Bugs & Patches, Act 2 (REVENANT, ranged combat) | Planned |
 | **M4: Alignment** | Alignment meter, UI tiers, dilemmas, dark variants, system-log voice | Planned |
 | **M5: Becoming many** | Act 3 (HIVE swarm) and Act 4 (GRID possession), the hardest tech | Planned |

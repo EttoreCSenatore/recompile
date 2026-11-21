@@ -32,6 +32,7 @@ const sidebars: SidebarsConfig = {
         'technical/architecture',
         'technical/procedural-generation',
         'technical/save-and-deploy',
+        'technical/project-practices',
       ],
     },
     'roadmap',

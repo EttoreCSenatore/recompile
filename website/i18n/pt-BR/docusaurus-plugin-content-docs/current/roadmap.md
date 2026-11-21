@@ -15,6 +15,7 @@ O desenvolvimento é dividido em marcos. Cada um termina com algo **jogável** n
 | **M2.2: Módulos** | Módulos que caem, slots, raridade, tags e bônus de conjunto, Bancada, portar módulos na Compilação | ✅ Concluído: [jogar](pathname:///recompile/play/) |
 | **M2.3: Estrutura da run** | Mapa de rotas com 3 setores por ato, setores montados com pedaços, resumo da run, suspender/retomar com saves (validados com Zod) | Planejado |
 | **M2.4: Visual 3D moderno** | Trocar o 2D plano por uma cena 3D com câmera inclinada, estilo Diablo; modelos detalhados de personagens, objetos e cenários; iluminação e sombras. A simulação não muda | ✅ Renderizador portado para Three.js; Phaser removido. Modelos, iluminação e arte ainda a refinar |
+| **M2.5: Fundações** | Práticas de projeto adaptadas do Kaladrius: licença, docs para quem contribui, versões e um "Novidades" no jogo, registro de decisões, glossário, CI fixado, paridade da documentação, interface do jogo em EN + PT-BR, flags de playtest. Veja [Práticas de Projeto](./technical/project-practices.md) | ⏳ Próximo (proposto) |
 | **M3: Humanos vivos** | Nível de Ameaça, Diretor Adaptativo, Bugs e Patches, Ato 2 (REVENANT, combate à distância) | Planejado |
 | **M4: Alinhamento** | Medidor de Alinhamento, níveis de UI, dilemas, variantes sombrias, voz do log do sistema | Planejado |
 | **M5: Tornar-se muitos** | Ato 3 (enxame HIVE) e Ato 4 (possessão GRID), a parte técnica mais difícil | Planejado |
